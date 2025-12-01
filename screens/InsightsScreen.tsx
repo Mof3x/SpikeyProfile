@@ -160,6 +160,7 @@ export default function InsightsScreen() {
                     width={Dimensions.get("window").width - Spacing.xl * 2 - Spacing.lg * 2}
                     height={220}
                     yAxisLabel=""
+                    yAxisSuffix=""
                     chartConfig={{
                       backgroundColor: "transparent",
                       backgroundGradientFrom: theme.surface,

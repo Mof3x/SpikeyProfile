@@ -30,6 +30,14 @@ export function TodaySummaryCard({ entry }: TodaySummaryCardProps) {
     navigation.navigate("TrackTab");
   };
 
+  const formatTime = (timestamp: Date | string) => {
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
   if (!entry) {
     return (
       <Pressable
@@ -67,10 +75,7 @@ export function TodaySummaryCard({ entry }: TodaySummaryCardProps) {
           type="small"
           style={{ color: theme.textSecondary }}
         >
-          {entry.timestamp.toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
+          {formatTime(entry.timestamp)}
         </ThemedText>
       </View>
 
