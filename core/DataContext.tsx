@@ -72,6 +72,21 @@ export interface EmergencyContact {
   relationship: string;
 }
 
+export interface AlarmSchedule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  startTime: Date;
+  endTime: Date;
+  numberOfAlarms: number;
+  intervalType: "uniform" | "custom";
+  customIntervals?: number[];
+  sound: string;
+  vibrate: boolean;
+  notificationIds: string[];
+  createdAt: Date;
+}
+
 export interface UserStats {
   totalEntries: number;
   currentStreak: number;
@@ -124,6 +139,11 @@ interface DataContextType {
   updateEmergencyContact: (id: string, contact: Partial<EmergencyContact>) => void;
   emergencyMessage: string;
   setEmergencyMessage: (message: string) => void;
+  alarmSchedules: AlarmSchedule[];
+  addAlarmSchedule: (schedule: Omit<AlarmSchedule, "id" | "createdAt" | "notificationIds">) => void;
+  updateAlarmSchedule: (id: string, schedule: Partial<AlarmSchedule>) => void;
+  removeAlarmSchedule: (id: string) => void;
+  toggleAlarmSchedule: (id: string) => void;
   userStats: UserStats;
   insights: PatternInsight[];
   userName: string;
@@ -144,6 +164,7 @@ const STORAGE_KEYS = {
   quickLogEntries: "@spikeyprofile/quickLogEntries",
   emergencyContacts: "@spikeyprofile/emergencyContacts",
   emergencyMessage: "@spikeyprofile/emergencyMessage",
+  alarmSchedules: "@spikeyprofile/alarmSchedules",
   userStats: "@spikeyprofile/userStats",
   userName: "@spikeyprofile/userName",
 };
@@ -276,6 +297,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [quickLogEntries, setQuickLogEntries] = useState<QuickLogEntry[]>([]);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [emergencyMessage, setEmergencyMessageState] = useState("Help - please contact me");
+  const [alarmSchedules, setAlarmSchedules] = useState<AlarmSchedule[]>([]);
   const [userStats, setUserStats] = useState<UserStats>({
     ...INITIAL_STATS,
     totalEntries: SAMPLE_ENTRIES.length,
@@ -304,6 +326,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedQuickEntries,
         storedContacts,
         storedMessage,
+        storedAlarms,
         storedStats,
         storedName,
       ] = await Promise.all([
@@ -317,6 +340,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.quickLogEntries),
         AsyncStorage.getItem(STORAGE_KEYS.emergencyContacts),
         AsyncStorage.getItem(STORAGE_KEYS.emergencyMessage),
+        AsyncStorage.getItem(STORAGE_KEYS.alarmSchedules),
         AsyncStorage.getItem(STORAGE_KEYS.userStats),
         AsyncStorage.getItem(STORAGE_KEYS.userName),
       ]);
@@ -331,6 +355,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (storedQuickEntries) setQuickLogEntries(deserializeData(storedQuickEntries));
       if (storedContacts) setEmergencyContacts(deserializeData(storedContacts));
       if (storedMessage) setEmergencyMessageState(storedMessage);
+      if (storedAlarms) setAlarmSchedules(deserializeData(storedAlarms));
       if (storedStats) setUserStats(deserializeData(storedStats));
       if (storedName) setUserNameState(storedName);
     } catch (error) {
@@ -604,6 +629,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     saveToStorage(STORAGE_KEYS.userName, name);
   }, [saveToStorage]);
 
+  const addAlarmSchedule = useCallback((schedule: Omit<AlarmSchedule, "id" | "createdAt" | "notificationIds">) => {
+    setAlarmSchedules((prev) => {
+      const newSchedule: AlarmSchedule = {
+        ...schedule,
+        id: Date.now().toString(),
+        createdAt: new Date(),
+        notificationIds: [],
+      };
+      const updated = [...prev, newSchedule];
+      saveToStorage(STORAGE_KEYS.alarmSchedules, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateAlarmSchedule = useCallback((id: string, updates: Partial<AlarmSchedule>) => {
+    setAlarmSchedules((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, ...updates } : s));
+      saveToStorage(STORAGE_KEYS.alarmSchedules, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeAlarmSchedule = useCallback((id: string) => {
+    setAlarmSchedules((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveToStorage(STORAGE_KEYS.alarmSchedules, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const toggleAlarmSchedule = useCallback((id: string) => {
+    setAlarmSchedules((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s));
+      saveToStorage(STORAGE_KEYS.alarmSchedules, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
   return (
     <DataContext.Provider
       value={{
@@ -641,6 +704,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateEmergencyContact,
         emergencyMessage,
         setEmergencyMessage,
+        alarmSchedules,
+        addAlarmSchedule,
+        updateAlarmSchedule,
+        removeAlarmSchedule,
+        toggleAlarmSchedule,
         userStats,
         insights,
         userName,

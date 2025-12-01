@@ -12,7 +12,8 @@ export type ModuleId =
   | "calendar"
   | "pomodoro"
   | "emergency"
-  | "customTrackers";
+  | "customTrackers"
+  | "alarms";
 
 export interface ModuleConfig {
   id: ModuleId;
@@ -99,6 +100,13 @@ const DEFAULT_MODULES: ModuleConfig[] = [
     description: "Create your own things to track",
     icon: "sliders",
     enabled: false,
+  },
+  {
+    id: "alarms",
+    name: "Automated Alarms",
+    description: "Set repeating alarms at intervals",
+    icon: "bell",
+    enabled: true,
   },
 ];
 

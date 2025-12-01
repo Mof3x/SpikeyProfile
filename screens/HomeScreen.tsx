@@ -18,6 +18,7 @@ import { UpcomingEventsWidget } from "@/modules/Calendar/UpcomingEventsWidget";
 import { NFCQuickLogCard } from "@/modules/NFCModule/NFCQuickLog";
 import { PomodoroTimerCard } from "@/modules/Pomodoro/PomodoroTimer";
 import { EmergencyButtonCard } from "@/modules/Emergency/EmergencyButton";
+import { AutomatedAlarms } from "@/modules/Alarms/AutomatedAlarms";
 
 export default function HomeScreen() {
   const { theme } = useTheme();
@@ -94,6 +95,13 @@ export default function HomeScreen() {
       {isModuleEnabled("pomodoro") ? (
         <>
           <PomodoroTimerCard />
+          <Spacer height={Spacing.lg} />
+        </>
+      ) : null}
+
+      {isModuleEnabled("alarms") ? (
+        <>
+          <AutomatedAlarms />
           <Spacer height={Spacing.lg} />
         </>
       ) : null}
