@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, Switch, TextInput, Alert, Platform } from "react-native";
+import { StyleSheet, View, Pressable, Switch, TextInput, Alert, ScrollView } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,9 +9,10 @@ import { ScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
+import { useThemeContext, ThemeId, FontSize } from "@/core/ThemeContext";
 import { useModules, ModuleConfig } from "@/core/ModuleContext";
 import { useData } from "@/core/DataContext";
-import { Spacing, BorderRadius, Typography } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 function SettingsSection({
   title,
@@ -68,14 +69,14 @@ function SettingsRow({
         <ThemedText type="body" style={styles.rowLabel}>
           {label}
         </ThemedText>
-        {description && (
+        {description ? (
           <ThemedText
             type="small"
             style={[styles.rowDescription, { color: theme.textSecondary }]}
           >
             {description}
           </ThemedText>
-        )}
+        ) : null}
       </View>
       {rightElement}
     </View>
@@ -93,6 +94,120 @@ function SettingsRow({
   }
 
   return content;
+}
+
+function ThemePicker() {
+  const { theme } = useTheme();
+  const { themeId, setThemeId, themePresets } = useThemeContext();
+
+  const handleSelectTheme = (id: ThemeId) => {
+    Haptics.selectionAsync();
+    setThemeId(id);
+  };
+
+  return (
+    <View style={styles.themePickerContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.themePickerScroll}
+      >
+        {themePresets.map((preset) => {
+          const isSelected = themeId === preset.id;
+          return (
+            <Pressable
+              key={preset.id}
+              onPress={() => handleSelectTheme(preset.id)}
+              style={({ pressed }) => [
+                styles.themeOption,
+                { opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <View
+                style={[
+                  styles.themePreview,
+                  {
+                    backgroundColor: preset.dark.backgroundRoot,
+                    borderColor: isSelected ? theme.primary : "transparent",
+                    borderWidth: 3,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.themePreviewInner,
+                    { backgroundColor: preset.dark.primary },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.themePreviewAccent,
+                    { backgroundColor: preset.dark.secondary },
+                  ]}
+                />
+              </View>
+              <ThemedText
+                type="caption"
+                style={[
+                  styles.themeName,
+                  { color: isSelected ? theme.primary : theme.textSecondary },
+                ]}
+              >
+                {preset.name}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function FontSizeSelector() {
+  const { theme, typography } = useTheme();
+  const { fontSize, setFontSize } = useThemeContext();
+
+  const sizes: { id: FontSize; label: string }[] = [
+    { id: "small", label: "S" },
+    { id: "medium", label: "M" },
+    { id: "large", label: "L" },
+    { id: "extraLarge", label: "XL" },
+  ];
+
+  const handleSelectSize = (size: FontSize) => {
+    Haptics.selectionAsync();
+    setFontSize(size);
+  };
+
+  return (
+    <View style={styles.fontSizeContainer}>
+      {sizes.map((size) => {
+        const isSelected = fontSize === size.id;
+        return (
+          <Pressable
+            key={size.id}
+            onPress={() => handleSelectSize(size.id)}
+            style={[
+              styles.fontSizeOption,
+              {
+                backgroundColor: isSelected ? theme.primary : theme.surfaceVariant,
+              },
+            ]}
+          >
+            <ThemedText
+              type="body"
+              style={[
+                styles.fontSizeLabel,
+                { color: isSelected ? "#FFFFFF" : theme.text },
+              ]}
+            >
+              {size.label}
+            </ThemedText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 function ModuleToggle({ module }: { module: ModuleConfig }) {
@@ -122,7 +237,8 @@ function ModuleToggle({ module }: { module: ModuleConfig }) {
 }
 
 export default function SettingsScreen() {
-  const { theme } = useTheme();
+  const { theme, typography } = useTheme();
+  const { isDark, setIsDark, currentPreset } = useThemeContext();
   const { modules, resetToDefaults } = useModules();
   const { userName, setUserName, userStats } = useData();
   const [editingName, setEditingName] = useState(false);
@@ -134,6 +250,11 @@ export default function SettingsScreen() {
     setUserName(nameInput);
     setEditingName(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleToggleDarkMode = () => {
+    Haptics.selectionAsync();
+    setIsDark(!isDark);
   };
 
   const handleReset = () => {
@@ -177,7 +298,11 @@ export default function SettingsScreen() {
               <TextInput
                 style={[
                   styles.nameInput,
-                  { backgroundColor: theme.surfaceVariant, color: theme.text },
+                  { 
+                    backgroundColor: theme.surfaceVariant, 
+                    color: theme.text,
+                    fontSize: typography.body.fontSize,
+                  },
                 ]}
                 value={nameInput}
                 onChangeText={setNameInput}
@@ -214,13 +339,50 @@ export default function SettingsScreen() {
         </View>
       </SettingsSection>
 
+      <SettingsSection title="APPEARANCE">
+        <View style={styles.appearanceContent}>
+          <ThemedText type="small" style={[styles.appearanceLabel, { color: theme.textSecondary }]}>
+            Theme
+          </ThemedText>
+          <ThemePicker />
+          
+          <View style={[styles.appearanceDivider, { backgroundColor: theme.divider }]} />
+          
+          <View style={styles.darkModeRow}>
+            <View style={styles.darkModeLabel}>
+              <Feather 
+                name={isDark ? "moon" : "sun"} 
+                size={18} 
+                color={theme.primary} 
+              />
+              <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
+                {isDark ? "Dark Mode" : "Light Mode"}
+              </ThemedText>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={handleToggleDarkMode}
+              trackColor={{ false: "#3A4150", true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          
+          <View style={[styles.appearanceDivider, { backgroundColor: theme.divider }]} />
+          
+          <ThemedText type="small" style={[styles.appearanceLabel, { color: theme.textSecondary }]}>
+            Text Size
+          </ThemedText>
+          <FontSizeSelector />
+        </View>
+      </SettingsSection>
+
       <SettingsSection title="MODULES">
         {modules.map((module, index) => (
           <View key={module.id}>
             <ModuleToggle module={module} />
-            {index < modules.length - 1 && (
+            {index < modules.length - 1 ? (
               <View style={[styles.divider, { backgroundColor: theme.divider }]} />
-            )}
+            ) : null}
           </View>
         ))}
       </SettingsSection>
@@ -329,7 +491,6 @@ const styles = StyleSheet.create({
     height: Spacing.inputHeight,
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.lg,
-    fontSize: Typography.body.fontSize,
     textAlign: "center",
   },
   saveNameButton: {
@@ -338,5 +499,73 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
+  },
+  appearanceContent: {
+    padding: Spacing.lg,
+  },
+  appearanceLabel: {
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+  },
+  appearanceDivider: {
+    height: 1,
+    marginVertical: Spacing.lg,
+  },
+  themePickerContainer: {
+    marginTop: Spacing.xs,
+  },
+  themePickerScroll: {
+    paddingRight: Spacing.lg,
+    gap: Spacing.md,
+  },
+  themeOption: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  themePreview: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  themePreviewInner: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+  },
+  themePreviewAccent: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+  },
+  themeName: {
+    fontWeight: "500",
+  },
+  darkModeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  darkModeLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fontSizeContainer: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  fontSizeOption: {
+    flex: 1,
+    height: 44,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fontSizeLabel: {
+    fontWeight: "600",
   },
 });

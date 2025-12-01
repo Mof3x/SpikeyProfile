@@ -1,7 +1,6 @@
 import { Text, type TextProps } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
-import { Typography } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -16,7 +15,7 @@ export function ThemedText({
   type = "body",
   ...rest
 }: ThemedTextProps) {
-  const { theme, isDark } = useTheme();
+  const { theme, isDark, typography } = useTheme();
 
   const getColor = () => {
     if (isDark && darkColor) {
@@ -37,23 +36,23 @@ export function ThemedText({
   const getTypeStyle = () => {
     switch (type) {
       case "h1":
-        return Typography.h1;
+        return typography.h1;
       case "h2":
-        return Typography.h2;
+        return typography.h2;
       case "h3":
-        return Typography.h3;
+        return typography.h3;
       case "h4":
-        return Typography.h4;
+        return typography.h4;
       case "body":
-        return Typography.body;
+        return typography.body;
       case "small":
-        return Typography.small;
+        return typography.small;
       case "caption":
-        return Typography.caption;
+        return typography.caption;
       case "link":
-        return Typography.link;
+        return typography.link;
       default:
-        return Typography.body;
+        return typography.body;
     }
   };
 

@@ -10,7 +10,7 @@ import TrackStackNavigator from "@/navigation/TrackStackNavigator";
 import InsightsStackNavigator from "@/navigation/InsightsStackNavigator";
 import SettingsStackNavigator from "@/navigation/SettingsStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows, Colors } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 export type MainTabParamList = {
   HomeTab: undefined;
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     width: Spacing.fabSize,
     height: Spacing.fabSize,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.dark.primary,
     alignItems: "center",
     justifyContent: "center",
     ...Shadows.fab,

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface SymptomEntry {
   id: string;
@@ -15,6 +16,60 @@ export interface ClipboardItem {
   id: string;
   text: string;
   createdAt: Date;
+}
+
+export interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: Date;
+  dueDate?: Date;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: Date;
+  type: "reminder" | "event" | "symptom";
+  recurring?: "daily" | "weekly" | "monthly" | null;
+  completed?: boolean;
+}
+
+export interface CustomTracker {
+  id: string;
+  name: string;
+  inputType: "slider" | "toggle" | "counter" | "text" | "color";
+  icon: string;
+  enabled: boolean;
+}
+
+export interface CustomTrackerEntry {
+  id: string;
+  trackerId: string;
+  value: string | number | boolean;
+  timestamp: Date;
+}
+
+export interface QuickLogAction {
+  id: string;
+  name: string;
+  icon: string;
+  category: "medication" | "habit" | "custom";
+  enabled: boolean;
+}
+
+export interface QuickLogEntry {
+  id: string;
+  actionId: string;
+  actionName: string;
+  timestamp: Date;
+}
+
+export interface EmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
+  relationship: string;
 }
 
 export interface UserStats {
@@ -42,13 +97,56 @@ interface DataContextType {
   removeClipboardItem: (id: string) => void;
   updateClipboardItem: (id: string, text: string) => void;
   reorderClipboardItems: (items: ClipboardItem[]) => void;
+  todos: TodoItem[];
+  addTodo: (text: string, dueDate?: Date) => void;
+  toggleTodo: (id: string) => void;
+  removeTodo: (id: string) => void;
+  updateTodo: (id: string, text: string) => void;
+  calendarEvents: CalendarEvent[];
+  addCalendarEvent: (event: Omit<CalendarEvent, "id">) => void;
+  removeCalendarEvent: (id: string) => void;
+  toggleCalendarEventComplete: (id: string) => void;
+  customTrackers: CustomTracker[];
+  addCustomTracker: (tracker: Omit<CustomTracker, "id">) => void;
+  removeCustomTracker: (id: string) => void;
+  toggleCustomTracker: (id: string) => void;
+  customTrackerEntries: CustomTrackerEntry[];
+  addCustomTrackerEntry: (trackerId: string, value: string | number | boolean) => void;
+  quickLogActions: QuickLogAction[];
+  addQuickLogAction: (action: Omit<QuickLogAction, "id">) => void;
+  removeQuickLogAction: (id: string) => void;
+  toggleQuickLogAction: (id: string) => void;
+  quickLogEntries: QuickLogEntry[];
+  logQuickAction: (actionId: string) => void;
+  emergencyContacts: EmergencyContact[];
+  addEmergencyContact: (contact: Omit<EmergencyContact, "id">) => void;
+  removeEmergencyContact: (id: string) => void;
+  updateEmergencyContact: (id: string, contact: Partial<EmergencyContact>) => void;
+  emergencyMessage: string;
+  setEmergencyMessage: (message: string) => void;
   userStats: UserStats;
   insights: PatternInsight[];
   userName: string;
   setUserName: (name: string) => void;
+  isLoading: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
+
+const STORAGE_KEYS = {
+  symptomEntries: "@spikeyprofile/symptomEntries",
+  clipboardItems: "@spikeyprofile/clipboardItems",
+  todos: "@spikeyprofile/todos",
+  calendarEvents: "@spikeyprofile/calendarEvents",
+  customTrackers: "@spikeyprofile/customTrackers",
+  customTrackerEntries: "@spikeyprofile/customTrackerEntries",
+  quickLogActions: "@spikeyprofile/quickLogActions",
+  quickLogEntries: "@spikeyprofile/quickLogEntries",
+  emergencyContacts: "@spikeyprofile/emergencyContacts",
+  emergencyMessage: "@spikeyprofile/emergencyMessage",
+  userStats: "@spikeyprofile/userStats",
+  userName: "@spikeyprofile/userName",
+};
 
 const INITIAL_STATS: UserStats = {
   totalEntries: 0,
@@ -116,6 +214,14 @@ const SAMPLE_ENTRIES: SymptomEntry[] = [
   },
 ];
 
+const DEFAULT_QUICK_LOG_ACTIONS: QuickLogAction[] = [
+  { id: "1", name: "Morning Meds", icon: "sun", category: "medication", enabled: true },
+  { id: "2", name: "Evening Meds", icon: "moon", category: "medication", enabled: true },
+  { id: "3", name: "Drank Water", icon: "droplet", category: "habit", enabled: true },
+  { id: "4", name: "Took a Break", icon: "coffee", category: "habit", enabled: true },
+  { id: "5", name: "Went Outside", icon: "wind", category: "habit", enabled: true },
+];
+
 const DEFAULT_INSIGHTS: PatternInsight[] = [
   {
     id: "1",
@@ -140,9 +246,36 @@ const DEFAULT_INSIGHTS: PatternInsight[] = [
   },
 ];
 
+const serializeData = (data: any): string => {
+  return JSON.stringify(data, (key, value) => {
+    if (value instanceof Date) {
+      return { __type: "Date", value: value.toISOString() };
+    }
+    return value;
+  });
+};
+
+const deserializeData = (json: string): any => {
+  return JSON.parse(json, (key, value) => {
+    if (value && typeof value === "object" && value.__type === "Date") {
+      return new Date(value.value);
+    }
+    return value;
+  });
+};
+
 export function DataProvider({ children }: { children: ReactNode }) {
+  const [isLoading, setIsLoading] = useState(true);
   const [symptomEntries, setSymptomEntries] = useState<SymptomEntry[]>(SAMPLE_ENTRIES);
   const [clipboardItems, setClipboardItems] = useState<ClipboardItem[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [customTrackers, setCustomTrackers] = useState<CustomTracker[]>([]);
+  const [customTrackerEntries, setCustomTrackerEntries] = useState<CustomTrackerEntry[]>([]);
+  const [quickLogActions, setQuickLogActions] = useState<QuickLogAction[]>(DEFAULT_QUICK_LOG_ACTIONS);
+  const [quickLogEntries, setQuickLogEntries] = useState<QuickLogEntry[]>([]);
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [emergencyMessage, setEmergencyMessageState] = useState("Help - please contact me");
   const [userStats, setUserStats] = useState<UserStats>({
     ...INITIAL_STATS,
     totalEntries: SAMPLE_ENTRIES.length,
@@ -152,25 +285,88 @@ export function DataProvider({ children }: { children: ReactNode }) {
     level: 2,
   });
   const [insights] = useState<PatternInsight[]>(DEFAULT_INSIGHTS);
-  const [userName, setUserName] = useState("");
+  const [userName, setUserNameState] = useState("");
 
-  const addSymptomEntry = (entry: Omit<SymptomEntry, "id" | "timestamp">) => {
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  const loadAllData = async () => {
+    try {
+      const [
+        storedSymptoms,
+        storedClipboard,
+        storedTodos,
+        storedEvents,
+        storedTrackers,
+        storedTrackerEntries,
+        storedQuickActions,
+        storedQuickEntries,
+        storedContacts,
+        storedMessage,
+        storedStats,
+        storedName,
+      ] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.symptomEntries),
+        AsyncStorage.getItem(STORAGE_KEYS.clipboardItems),
+        AsyncStorage.getItem(STORAGE_KEYS.todos),
+        AsyncStorage.getItem(STORAGE_KEYS.calendarEvents),
+        AsyncStorage.getItem(STORAGE_KEYS.customTrackers),
+        AsyncStorage.getItem(STORAGE_KEYS.customTrackerEntries),
+        AsyncStorage.getItem(STORAGE_KEYS.quickLogActions),
+        AsyncStorage.getItem(STORAGE_KEYS.quickLogEntries),
+        AsyncStorage.getItem(STORAGE_KEYS.emergencyContacts),
+        AsyncStorage.getItem(STORAGE_KEYS.emergencyMessage),
+        AsyncStorage.getItem(STORAGE_KEYS.userStats),
+        AsyncStorage.getItem(STORAGE_KEYS.userName),
+      ]);
+
+      if (storedSymptoms) setSymptomEntries(deserializeData(storedSymptoms));
+      if (storedClipboard) setClipboardItems(deserializeData(storedClipboard));
+      if (storedTodos) setTodos(deserializeData(storedTodos));
+      if (storedEvents) setCalendarEvents(deserializeData(storedEvents));
+      if (storedTrackers) setCustomTrackers(deserializeData(storedTrackers));
+      if (storedTrackerEntries) setCustomTrackerEntries(deserializeData(storedTrackerEntries));
+      if (storedQuickActions) setQuickLogActions(deserializeData(storedQuickActions));
+      if (storedQuickEntries) setQuickLogEntries(deserializeData(storedQuickEntries));
+      if (storedContacts) setEmergencyContacts(deserializeData(storedContacts));
+      if (storedMessage) setEmergencyMessageState(storedMessage);
+      if (storedStats) setUserStats(deserializeData(storedStats));
+      if (storedName) setUserNameState(storedName);
+    } catch (error) {
+      console.error("Failed to load data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveToStorage = useCallback(async (key: string, data: any) => {
+    try {
+      await AsyncStorage.setItem(key, typeof data === "string" ? data : serializeData(data));
+    } catch (error) {
+      console.error(`Failed to save ${key}:`, error);
+    }
+  }, []);
+
+  const addSymptomEntry = useCallback((entry: Omit<SymptomEntry, "id" | "timestamp">) => {
     const newEntry: SymptomEntry = {
       ...entry,
       id: Date.now().toString(),
       timestamp: new Date(),
     };
-    setSymptomEntries((prev) => [newEntry, ...prev]);
-
-    const today = new Date();
-    const lastEntry = userStats.lastEntryDate;
-    const isConsecutive =
-      lastEntry &&
-      today.getTime() - lastEntry.getTime() < 86400000 * 2;
+    
+    setSymptomEntries((prev) => {
+      const updated = [newEntry, ...prev];
+      saveToStorage(STORAGE_KEYS.symptomEntries, updated);
+      return updated;
+    });
 
     setUserStats((prev) => {
+      const today = new Date();
+      const lastEntry = prev.lastEntryDate;
+      const isConsecutive = lastEntry && today.getTime() - new Date(lastEntry).getTime() < 86400000 * 2;
       const newStreak = isConsecutive ? prev.currentStreak + 1 : 1;
-      return {
+      const updated = {
         ...prev,
         totalEntries: prev.totalEntries + 1,
         currentStreak: newStreak,
@@ -179,36 +375,234 @@ export function DataProvider({ children }: { children: ReactNode }) {
         level: Math.floor((prev.xp + 25) / 100) + 1,
         lastEntryDate: today,
       };
+      saveToStorage(STORAGE_KEYS.userStats, updated);
+      return updated;
     });
-  };
+  }, [saveToStorage]);
 
-  const addClipboardItem = (text: string) => {
-    if (clipboardItems.length >= 5) {
-      setClipboardItems((prev) => [
-        { id: Date.now().toString(), text, createdAt: new Date() },
-        ...prev.slice(0, 4),
-      ]);
-    } else {
-      setClipboardItems((prev) => [
-        { id: Date.now().toString(), text, createdAt: new Date() },
-        ...prev,
-      ]);
-    }
-  };
+  const addClipboardItem = useCallback((text: string) => {
+    setClipboardItems((prev) => {
+      const newItem = { id: Date.now().toString(), text, createdAt: new Date() };
+      const updated = prev.length >= 5 ? [newItem, ...prev.slice(0, 4)] : [newItem, ...prev];
+      saveToStorage(STORAGE_KEYS.clipboardItems, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
 
-  const removeClipboardItem = (id: string) => {
-    setClipboardItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  const removeClipboardItem = useCallback((id: string) => {
+    setClipboardItems((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      saveToStorage(STORAGE_KEYS.clipboardItems, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
 
-  const updateClipboardItem = (id: string, text: string) => {
-    setClipboardItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, text } : item))
-    );
-  };
+  const updateClipboardItem = useCallback((id: string, text: string) => {
+    setClipboardItems((prev) => {
+      const updated = prev.map((item) => (item.id === id ? { ...item, text } : item));
+      saveToStorage(STORAGE_KEYS.clipboardItems, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
 
-  const reorderClipboardItems = (items: ClipboardItem[]) => {
+  const reorderClipboardItems = useCallback((items: ClipboardItem[]) => {
     setClipboardItems(items);
-  };
+    saveToStorage(STORAGE_KEYS.clipboardItems, items);
+  }, [saveToStorage]);
+
+  const addTodo = useCallback((text: string, dueDate?: Date) => {
+    setTodos((prev) => {
+      const newTodo: TodoItem = {
+        id: Date.now().toString(),
+        text,
+        completed: false,
+        createdAt: new Date(),
+        dueDate,
+      };
+      const updated = [newTodo, ...prev];
+      saveToStorage(STORAGE_KEYS.todos, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const toggleTodo = useCallback((id: string) => {
+    setTodos((prev) => {
+      const updated = prev.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      );
+      saveToStorage(STORAGE_KEYS.todos, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeTodo = useCallback((id: string) => {
+    setTodos((prev) => {
+      const updated = prev.filter((todo) => todo.id !== id);
+      saveToStorage(STORAGE_KEYS.todos, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateTodo = useCallback((id: string, text: string) => {
+    setTodos((prev) => {
+      const updated = prev.map((todo) => (todo.id === id ? { ...todo, text } : todo));
+      saveToStorage(STORAGE_KEYS.todos, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const addCalendarEvent = useCallback((event: Omit<CalendarEvent, "id">) => {
+    setCalendarEvents((prev) => {
+      const newEvent: CalendarEvent = { ...event, id: Date.now().toString() };
+      const updated = [...prev, newEvent];
+      saveToStorage(STORAGE_KEYS.calendarEvents, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeCalendarEvent = useCallback((id: string) => {
+    setCalendarEvents((prev) => {
+      const updated = prev.filter((event) => event.id !== id);
+      saveToStorage(STORAGE_KEYS.calendarEvents, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const toggleCalendarEventComplete = useCallback((id: string) => {
+    setCalendarEvents((prev) => {
+      const updated = prev.map((event) =>
+        event.id === id ? { ...event, completed: !event.completed } : event
+      );
+      saveToStorage(STORAGE_KEYS.calendarEvents, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const addCustomTracker = useCallback((tracker: Omit<CustomTracker, "id">) => {
+    setCustomTrackers((prev) => {
+      const newTracker: CustomTracker = { ...tracker, id: Date.now().toString() };
+      const updated = [...prev, newTracker];
+      saveToStorage(STORAGE_KEYS.customTrackers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeCustomTracker = useCallback((id: string) => {
+    setCustomTrackers((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      saveToStorage(STORAGE_KEYS.customTrackers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const toggleCustomTracker = useCallback((id: string) => {
+    setCustomTrackers((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t));
+      saveToStorage(STORAGE_KEYS.customTrackers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const addCustomTrackerEntry = useCallback((trackerId: string, value: string | number | boolean) => {
+    setCustomTrackerEntries((prev) => {
+      const newEntry: CustomTrackerEntry = {
+        id: Date.now().toString(),
+        trackerId,
+        value,
+        timestamp: new Date(),
+      };
+      const updated = [newEntry, ...prev];
+      saveToStorage(STORAGE_KEYS.customTrackerEntries, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const addQuickLogAction = useCallback((action: Omit<QuickLogAction, "id">) => {
+    setQuickLogActions((prev) => {
+      const newAction: QuickLogAction = { ...action, id: Date.now().toString() };
+      const updated = [...prev, newAction];
+      saveToStorage(STORAGE_KEYS.quickLogActions, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeQuickLogAction = useCallback((id: string) => {
+    setQuickLogActions((prev) => {
+      const updated = prev.filter((a) => a.id !== id);
+      saveToStorage(STORAGE_KEYS.quickLogActions, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const toggleQuickLogAction = useCallback((id: string) => {
+    setQuickLogActions((prev) => {
+      const updated = prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a));
+      saveToStorage(STORAGE_KEYS.quickLogActions, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const logQuickAction = useCallback((actionId: string) => {
+    const action = quickLogActions.find((a) => a.id === actionId);
+    if (!action) return;
+
+    setQuickLogEntries((prev) => {
+      const newEntry: QuickLogEntry = {
+        id: Date.now().toString(),
+        actionId,
+        actionName: action.name,
+        timestamp: new Date(),
+      };
+      const updated = [newEntry, ...prev];
+      saveToStorage(STORAGE_KEYS.quickLogEntries, updated);
+      return updated;
+    });
+
+    setUserStats((prev) => {
+      const updated = {
+        ...prev,
+        xp: prev.xp + 10,
+        level: Math.floor((prev.xp + 10) / 100) + 1,
+      };
+      saveToStorage(STORAGE_KEYS.userStats, updated);
+      return updated;
+    });
+  }, [quickLogActions, saveToStorage]);
+
+  const addEmergencyContact = useCallback((contact: Omit<EmergencyContact, "id">) => {
+    setEmergencyContacts((prev) => {
+      const newContact: EmergencyContact = { ...contact, id: Date.now().toString() };
+      const updated = [...prev, newContact];
+      saveToStorage(STORAGE_KEYS.emergencyContacts, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeEmergencyContact = useCallback((id: string) => {
+    setEmergencyContacts((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveToStorage(STORAGE_KEYS.emergencyContacts, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateEmergencyContact = useCallback((id: string, contact: Partial<EmergencyContact>) => {
+    setEmergencyContacts((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...contact } : c));
+      saveToStorage(STORAGE_KEYS.emergencyContacts, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const setEmergencyMessage = useCallback((message: string) => {
+    setEmergencyMessageState(message);
+    saveToStorage(STORAGE_KEYS.emergencyMessage, message);
+  }, [saveToStorage]);
+
+  const setUserName = useCallback((name: string) => {
+    setUserNameState(name);
+    saveToStorage(STORAGE_KEYS.userName, name);
+  }, [saveToStorage]);
 
   return (
     <DataContext.Provider
@@ -220,10 +614,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
         removeClipboardItem,
         updateClipboardItem,
         reorderClipboardItems,
+        todos,
+        addTodo,
+        toggleTodo,
+        removeTodo,
+        updateTodo,
+        calendarEvents,
+        addCalendarEvent,
+        removeCalendarEvent,
+        toggleCalendarEventComplete,
+        customTrackers,
+        addCustomTracker,
+        removeCustomTracker,
+        toggleCustomTracker,
+        customTrackerEntries,
+        addCustomTrackerEntry,
+        quickLogActions,
+        addQuickLogAction,
+        removeQuickLogAction,
+        toggleQuickLogAction,
+        quickLogEntries,
+        logQuickAction,
+        emergencyContacts,
+        addEmergencyContact,
+        removeEmergencyContact,
+        updateEmergencyContact,
+        emergencyMessage,
+        setEmergencyMessage,
         userStats,
         insights,
         userName,
         setUserName,
+        isLoading,
       }}
     >
       {children}
