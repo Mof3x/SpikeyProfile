@@ -15,6 +15,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 
 import { SpikyChart } from "@/modules/SpikyChart/SpikyChart";
 import { InsightCard } from "@/modules/PatternInsights/InsightCard";
+import { PatternInsightsGraph } from "@/modules/PatternInsights/PatternInsightsGraph";
 import { MedicationHistoryCard } from "@/modules/MedicationHistory/MedicationHistoryCard";
 
 type TimeRange = "week" | "month";
@@ -93,7 +94,7 @@ export default function InsightsScreen() {
             type="small"
             style={[
               styles.rangeText,
-              { color: timeRange === "week" ? "#FFFFFF" : theme.text },
+              { color: timeRange === "week" ? theme.background : theme.text },
             ]}
           >
             Week
@@ -113,7 +114,7 @@ export default function InsightsScreen() {
             type="small"
             style={[
               styles.rangeText,
-              { color: timeRange === "month" ? "#FFFFFF" : theme.text },
+              { color: timeRange === "month" ? theme.background : theme.text },
             ]}
           >
             Month
@@ -219,8 +220,11 @@ export default function InsightsScreen() {
 
       {insightsEnabled && (
         <>
+          <PatternInsightsGraph />
+          <Spacer height={Spacing.xl} />
+
           <ThemedText type="h4" style={styles.sectionTitle}>
-            Pattern Insights
+            Quick Insights
           </ThemedText>
           <Spacer height={Spacing.md} />
           <ScrollView
