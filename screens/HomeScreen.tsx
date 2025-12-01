@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { StyleSheet, View, Pressable, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
@@ -180,6 +181,7 @@ function WidgetReorderModal({
 
 export default function HomeScreen() {
   const { theme } = useTheme();
+  const navigation = useNavigation<any>();
   const { isModuleEnabled } = useModules();
   const { userName, symptomEntries, widgetOrder, setWidgetOrder } = useData();
   const [showReorderModal, setShowReorderModal] = useState(false);
@@ -272,15 +274,26 @@ export default function HomeScreen() {
                 : "Ready to check in?"}
             </ThemedText>
           </View>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowReorderModal(true);
-            }}
-            style={[styles.customizeButton, { backgroundColor: theme.surfaceVariant }]}
-          >
-            <Feather name="sliders" size={18} color={theme.text} />
-          </Pressable>
+          <View style={styles.headerButtons}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate("DailyBrief");
+              }}
+              style={[styles.customizeButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="sun" size={18} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowReorderModal(true);
+              }}
+              style={[styles.customizeButton, { backgroundColor: theme.surfaceVariant }]}
+            >
+              <Feather name="sliders" size={18} color={theme.text} />
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -328,13 +341,16 @@ const styles = StyleSheet.create({
   subtitle: {
     opacity: 0.8,
   },
+  headerButtons: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
   customizeButton: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: Spacing.md,
   },
   modalOverlay: {
     flex: 1,

@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeScreen from "@/screens/HomeScreen";
 import CalendarScreen from "@/screens/CalendarScreen";
+import DailyBriefScreen from "@/screens/DailyBriefScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useTheme } from "@/hooks/useTheme";
 import { getCommonScreenOptions } from "@/navigation/screenOptions";
@@ -10,6 +11,7 @@ import { getCommonScreenOptions } from "@/navigation/screenOptions";
 export type HomeStackParamList = {
   Home: undefined;
   Calendar: undefined;
+  DailyBrief: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -35,6 +37,13 @@ export default function HomeStackNavigator() {
         component={CalendarScreen}
         options={{
           title: "Calendar",
+        }}
+      />
+      <Stack.Screen
+        name="DailyBrief"
+        component={DailyBriefScreen}
+        options={{
+          title: "Daily Brief",
         }}
       />
     </Stack.Navigator>

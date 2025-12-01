@@ -15,6 +15,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 
 import { SpikyChart } from "@/modules/SpikyChart/SpikyChart";
 import { InsightCard } from "@/modules/PatternInsights/InsightCard";
+import { MedicationHistoryCard } from "@/modules/MedicationHistory/MedicationHistoryCard";
 
 type TimeRange = "week" | "month";
 
@@ -211,6 +212,9 @@ export default function InsightsScreen() {
           </View>
         </View>
       </Card>
+      <Spacer height={Spacing.xl} />
+
+      <MedicationHistoryCard />
       <Spacer height={Spacing.xl} />
 
       {insightsEnabled && (

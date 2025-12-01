@@ -88,7 +88,7 @@ export default function TrackScreen() {
 
   const handleAddTodo = () => {
     if (!newTodoText.trim()) return;
-    addTodo({ title: newTodoText.trim(), completed: false });
+    addTodo(newTodoText.trim());
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setNewTodoText("");
   };
@@ -317,7 +317,7 @@ export default function TrackScreen() {
                         ? "sliders"
                         : type === "stars"
                           ? "star"
-                          : "palette"
+                          : "droplet"
                     }
                     size={24}
                     color={
