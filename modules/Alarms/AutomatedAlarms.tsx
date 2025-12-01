@@ -59,6 +59,20 @@ export function AutomatedAlarms() {
     setHasPermission(status === "granted");
   };
 
+  const refreshPermissionState = async () => {
+    if (Platform.OS === "web") {
+      setHasPermission(false);
+      setPermissionStatus(null);
+      return false;
+    }
+    const { status, canAskAgain: askAgain } = await Notifications.getPermissionsAsync();
+    setPermissionStatus(status);
+    setCanAskAgain(askAgain);
+    const granted = status === "granted";
+    setHasPermission(granted);
+    return granted;
+  };
+
   const requestPermission = async (): Promise<boolean> => {
     if (Platform.OS === "web") {
       Alert.alert(
@@ -87,6 +101,7 @@ export function AutomatedAlarms() {
             onPress: async () => {
               try {
                 await Linking.openSettings();
+                setTimeout(() => refreshPermissionState(), 1000);
               } catch (e) {
                 console.log("Could not open settings");
               }
@@ -99,11 +114,12 @@ export function AutomatedAlarms() {
     }
 
     const { status: newStatus, canAskAgain: newAskAgain } = await Notifications.requestPermissionsAsync();
+    const granted = newStatus === "granted";
     setPermissionStatus(newStatus);
     setCanAskAgain(newAskAgain);
-    setHasPermission(newStatus === "granted");
+    setHasPermission(granted);
     
-    if (newStatus !== "granted") {
+    if (!granted) {
       Alert.alert(
         "Notifications Needed",
         "To receive alarms, we need permission to send notifications. Your schedules will be saved but won't send alerts until you enable notifications."
@@ -133,8 +149,13 @@ export function AutomatedAlarms() {
     return times;
   };
 
-  const scheduleNotifications = async (schedule: AlarmSchedule) => {
-    if (Platform.OS === "web" || !hasPermission) return [];
+  const scheduleNotifications = async (schedule: AlarmSchedule, skipPermissionCheck = false) => {
+    if (Platform.OS === "web") return [];
+    
+    if (!skipPermissionCheck) {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") return [];
+    }
 
     const alarmTimes = calculateAlarmTimes(schedule.startTime, schedule.endTime, schedule.numberOfAlarms);
     const notificationIds: string[] = [];
@@ -204,7 +225,7 @@ export function AutomatedAlarms() {
           notificationIds: [],
         };
         
-        const notificationIds = await scheduleNotifications(tempSchedule);
+        const notificationIds = await scheduleNotifications(tempSchedule, true);
         
         addAlarmSchedule(schedule);
         
@@ -264,7 +285,7 @@ export function AutomatedAlarms() {
         return;
       }
       
-      const newIds = await scheduleNotifications({ ...schedule, enabled: true });
+      const newIds = await scheduleNotifications({ ...schedule, enabled: true }, true);
       
       if (newIds.length > 0) {
         updateAlarmSchedule(schedule.id, { notificationIds: newIds });
@@ -344,9 +365,14 @@ export function AutomatedAlarms() {
     };
 
     if (editingSchedule.enabled) {
-      const newSchedule = { ...editingSchedule, ...updates };
-      const newIds = await scheduleNotifications(newSchedule);
-      updates.notificationIds = newIds;
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === "granted") {
+        const newSchedule = { ...editingSchedule, ...updates };
+        const newIds = await scheduleNotifications(newSchedule, true);
+        updates.notificationIds = newIds;
+      } else {
+        updates.notificationIds = [];
+      }
     }
 
     updateAlarmSchedule(editingSchedule.id, updates);

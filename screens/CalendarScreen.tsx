@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
@@ -19,7 +20,19 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-type FilterType = "all" | "reminder" | "event" | "symptom";
+type FilterType = "all" | "events" | "reminders" | "logs" | "symptoms" | "todos" | "alarms";
+
+interface UnifiedTimeItem {
+  id: string;
+  title: string;
+  timestamp: Date;
+  type: FilterType;
+  icon: string;
+  color: string;
+  subtext?: string;
+}
+
+const FILTER_STORAGE_KEY = "@spikeyprofile/calendarFilters";
 
 function getDaysInMonth(year: number, month: number): Date[] {
   const days: Date[] = [];
@@ -46,41 +59,154 @@ function getDaysInMonth(year: number, month: number): Date[] {
 
 export default function CalendarScreen() {
   const { theme, typography } = useTheme();
-  const { calendarEvents, addCalendarEvent, removeCalendarEvent, symptomEntries } = useData();
+  const { 
+    calendarEvents, 
+    addCalendarEvent, 
+    removeCalendarEvent, 
+    symptomEntries,
+    quickLogEntries,
+    todos,
+    alarmSchedules,
+  } = useData();
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [activeFilters, setActiveFilters] = useState<Set<FilterType>>(new Set(["all"]));
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState("");
-  const [newEventType, setNewEventType] = useState<"reminder" | "event">("event");
+  const [newEventType, setNewEventType] = useState<"reminders" | "events">("events");
   const [newEventDate, setNewEventDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  useEffect(() => {
+    loadFilters();
+  }, []);
+
+  const loadFilters = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(FILTER_STORAGE_KEY);
+      if (stored) {
+        const filters = JSON.parse(stored) as FilterType[];
+        setActiveFilters(new Set(filters));
+      }
+    } catch (error) {
+      console.error("Failed to load filters:", error);
+    }
+  };
+
+  const saveFilters = async (filters: Set<FilterType>) => {
+    try {
+      await AsyncStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(Array.from(filters)));
+    } catch (error) {
+      console.error("Failed to save filters:", error);
+    }
+  };
 
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
   const days = useMemo(() => getDaysInMonth(currentYear, currentMonth), [currentYear, currentMonth]);
 
-  const getEventsForDate = (date: Date): CalendarEvent[] => {
-    return calendarEvents.filter((e) => {
-      const eventDate = new Date(e.date);
-      return eventDate.toDateString() === date.toDateString();
-    });
-  };
+  const allTimeItems = useMemo((): UnifiedTimeItem[] => {
+    const items: UnifiedTimeItem[] = [];
 
-  const hasSymptomEntry = (date: Date): boolean => {
-    return symptomEntries.some((e) => {
-      const entryDate = new Date(e.timestamp);
-      return entryDate.toDateString() === date.toDateString();
+    calendarEvents.forEach((event) => {
+      items.push({
+        id: `event-${event.id}`,
+        title: event.title,
+        timestamp: new Date(event.date),
+        type: event.type === "reminder" ? "reminders" : "events",
+        icon: event.type === "reminder" ? "bell" : "calendar",
+        color: event.type === "reminder" ? theme.accent : theme.primary,
+      });
     });
-  };
 
-  const filteredEvents = useMemo(() => {
+    symptomEntries.forEach((entry) => {
+      items.push({
+        id: `symptom-${entry.id}`,
+        title: "Symptom Check-in",
+        timestamp: new Date(entry.timestamp),
+        type: "symptoms",
+        icon: "activity",
+        color: theme.secondary,
+        subtext: `Mood: ${entry.mood}/10, Energy: ${entry.energy}/10`,
+      });
+    });
+
+    quickLogEntries.forEach((entry) => {
+      items.push({
+        id: `log-${entry.id}`,
+        title: entry.actionName,
+        timestamp: new Date(entry.timestamp),
+        type: "logs",
+        icon: "check-circle",
+        color: theme.success,
+        subtext: "Quick Log",
+      });
+    });
+
+    todos.forEach((todo) => {
+      if (todo.dueDate) {
+        items.push({
+          id: `todo-${todo.id}`,
+          title: todo.text,
+          timestamp: new Date(todo.dueDate),
+          type: "todos",
+          icon: todo.completed ? "check-square" : "square",
+          color: todo.completed ? theme.success : theme.accent,
+          subtext: todo.completed ? "Completed" : "Due",
+        });
+      }
+    });
+
+    alarmSchedules.forEach((schedule) => {
+      if (schedule.enabled) {
+        items.push({
+          id: `alarm-${schedule.id}`,
+          title: schedule.name,
+          timestamp: new Date(schedule.startTime),
+          type: "alarms",
+          icon: "clock",
+          color: theme.accent,
+          subtext: `${schedule.numberOfAlarms} alarms`,
+        });
+      }
+    });
+
+    return items;
+  }, [calendarEvents, symptomEntries, quickLogEntries, todos, alarmSchedules, theme]);
+
+  const getItemsForDate = useCallback((date: Date): UnifiedTimeItem[] => {
+    return allTimeItems.filter((item) => {
+      const itemDate = new Date(item.timestamp);
+      return itemDate.toDateString() === date.toDateString();
+    });
+  }, [allTimeItems]);
+
+  const getIndicatorsForDate = useCallback((date: Date) => {
+    const items = getItemsForDate(date);
+    const types = new Set(items.map((item) => item.type));
+    return {
+      hasEvents: types.has("events"),
+      hasReminders: types.has("reminders"),
+      hasLogs: types.has("logs"),
+      hasSymptoms: types.has("symptoms"),
+      hasTodos: types.has("todos"),
+      hasAlarms: types.has("alarms"),
+    };
+  }, [getItemsForDate]);
+
+  const filteredItems = useMemo(() => {
     if (!selectedDate) return [];
-    const dayEvents = getEventsForDate(selectedDate);
-    if (filter === "all") return dayEvents;
-    return dayEvents.filter((e) => e.type === filter);
-  }, [selectedDate, calendarEvents, filter]);
+    const dayItems = getItemsForDate(selectedDate);
+    
+    if (activeFilters.has("all")) {
+      return dayItems.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    }
+    
+    return dayItems
+      .filter((item) => activeFilters.has(item.type))
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  }, [selectedDate, allTimeItems, activeFilters, getItemsForDate]);
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
@@ -95,12 +221,39 @@ export default function CalendarScreen() {
     setSelectedDate(date);
   };
 
+  const handleFilterToggle = (filter: FilterType) => {
+    Haptics.selectionAsync();
+    setActiveFilters((prev) => {
+      const newFilters = new Set(prev);
+      
+      if (filter === "all") {
+        const newSet = new Set<FilterType>(["all"]);
+        saveFilters(newSet);
+        return newSet;
+      }
+      
+      newFilters.delete("all");
+      
+      if (newFilters.has(filter)) {
+        newFilters.delete(filter);
+        if (newFilters.size === 0) {
+          newFilters.add("all");
+        }
+      } else {
+        newFilters.add(filter);
+      }
+      
+      saveFilters(newFilters);
+      return newFilters;
+    });
+  };
+
   const handleAddEvent = () => {
     if (newEventTitle.trim()) {
       addCalendarEvent({
         title: newEventTitle.trim(),
         date: newEventDate,
-        type: newEventType,
+        type: newEventType === "events" ? "event" : "reminder",
         recurring: null,
       });
       setNewEventTitle("");
@@ -109,16 +262,14 @@ export default function CalendarScreen() {
     }
   };
 
-  const typeColors = {
-    reminder: theme.accent,
-    event: theme.primary,
-    symptom: theme.secondary,
-  };
-
-  const filters: { id: FilterType; label: string }[] = [
-    { id: "all", label: "All" },
-    { id: "event", label: "Events" },
-    { id: "reminder", label: "Reminders" },
+  const filters: { id: FilterType; label: string; icon: string; color: string }[] = [
+    { id: "all", label: "All", icon: "grid", color: theme.text },
+    { id: "events", label: "Events", icon: "calendar", color: theme.primary },
+    { id: "reminders", label: "Reminders", icon: "bell", color: theme.accent },
+    { id: "logs", label: "Logs", icon: "check-circle", color: theme.success },
+    { id: "symptoms", label: "Symptoms", icon: "activity", color: theme.secondary },
+    { id: "todos", label: "To-Dos", icon: "check-square", color: theme.accent },
+    { id: "alarms", label: "Alarms", icon: "clock", color: theme.accent },
   ];
 
   return (
@@ -151,8 +302,7 @@ export default function CalendarScreen() {
             const isCurrentMonth = date.getMonth() === currentMonth;
             const isToday = date.toDateString() === new Date().toDateString();
             const isSelected = selectedDate?.toDateString() === date.toDateString();
-            const events = getEventsForDate(date);
-            const hasSymptom = hasSymptomEntry(date);
+            const indicators = getIndicatorsForDate(date);
 
             return (
               <Pressable
@@ -175,11 +325,20 @@ export default function CalendarScreen() {
                   {date.getDate()}
                 </ThemedText>
                 <View style={styles.indicators}>
-                  {events.length > 0 ? (
+                  {indicators.hasEvents ? (
                     <View style={[styles.indicator, { backgroundColor: theme.primary }]} />
                   ) : null}
-                  {hasSymptom ? (
+                  {indicators.hasReminders ? (
+                    <View style={[styles.indicator, { backgroundColor: theme.accent }]} />
+                  ) : null}
+                  {indicators.hasLogs ? (
+                    <View style={[styles.indicator, { backgroundColor: theme.success }]} />
+                  ) : null}
+                  {indicators.hasSymptoms ? (
                     <View style={[styles.indicator, { backgroundColor: theme.secondary }]} />
+                  ) : null}
+                  {indicators.hasTodos ? (
+                    <View style={[styles.indicator, { backgroundColor: theme.accent }]} />
                   ) : null}
                 </View>
               </Pressable>
@@ -190,24 +349,40 @@ export default function CalendarScreen() {
 
       <Spacer height={Spacing.lg} />
 
-      <View style={styles.filterRow}>
-        {filters.map((f) => (
-          <Pressable
-            key={f.id}
-            onPress={() => setFilter(f.id)}
-            style={[
-              styles.filterButton,
-              { backgroundColor: filter === f.id ? theme.primary : theme.surfaceVariant },
-            ]}
-          >
-            <ThemedText
-              type="small"
-              style={{ color: filter === f.id ? "#FFFFFF" : theme.text }}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterScrollContent}
+      >
+        {filters.map((f) => {
+          const isActive = activeFilters.has(f.id);
+          return (
+            <Pressable
+              key={f.id}
+              onPress={() => handleFilterToggle(f.id)}
+              style={[
+                styles.filterButton,
+                { 
+                  backgroundColor: isActive ? f.color : theme.surfaceVariant,
+                  borderWidth: 1,
+                  borderColor: isActive ? f.color : theme.divider,
+                },
+              ]}
             >
-              {f.label}
-            </ThemedText>
-          </Pressable>
-        ))}
+              <Feather 
+                name={f.icon as any} 
+                size={14} 
+                color={isActive ? "#FFFFFF" : theme.text} 
+              />
+              <ThemedText
+                type="small"
+                style={{ color: isActive ? "#FFFFFF" : theme.text, marginLeft: 4 }}
+              >
+                {f.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
         <Pressable
           onPress={() => {
             if (selectedDate) {
@@ -219,7 +394,7 @@ export default function CalendarScreen() {
         >
           <Feather name="plus" size={18} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </ScrollView>
 
       <Spacer height={Spacing.md} />
 
@@ -233,33 +408,56 @@ export default function CalendarScreen() {
                 day: "numeric",
               })}
             </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {filteredItems.length} item{filteredItems.length !== 1 ? "s" : ""}
+            </ThemedText>
           </View>
 
-          {filteredEvents.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <View style={styles.emptyState}>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Nothing scheduled. A quiet day ahead?
+              <Feather name="sun" size={32} color={theme.textSecondary} />
+              <Spacer height={Spacing.sm} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: "center" }}>
+                Nothing here yet. A quiet day ahead?
               </ThemedText>
             </View>
           ) : (
             <View style={styles.eventList}>
-              {filteredEvents.map((event) => (
-                <View key={event.id} style={styles.eventItem}>
+              {filteredItems.map((item) => (
+                <View key={item.id} style={styles.eventItem}>
                   <View
-                    style={[styles.eventIndicator, { backgroundColor: typeColors[event.type] }]}
+                    style={[styles.eventIndicator, { backgroundColor: item.color }]}
                   />
-                  <View style={styles.eventContent}>
-                    <ThemedText type="body">{event.title}</ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      {new Date(event.date).toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </ThemedText>
+                  <View style={styles.eventIcon}>
+                    <Feather name={item.icon as any} size={16} color={item.color} />
                   </View>
-                  <Pressable onPress={() => removeCalendarEvent(event.id)}>
-                    <Feather name="trash-2" size={16} color={theme.textSecondary} />
-                  </Pressable>
+                  <View style={styles.eventContent}>
+                    <ThemedText type="body">{item.title}</ThemedText>
+                    <View style={styles.eventMeta}>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                        {new Date(item.timestamp).toLocaleTimeString("en-US", {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </ThemedText>
+                      {item.subtext ? (
+                        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                          {" "}{item.subtext}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                  </View>
+                  {item.id.startsWith("event-") ? (
+                    <Pressable 
+                      onPress={() => {
+                        const eventId = item.id.replace("event-", "");
+                        removeCalendarEvent(eventId);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                    >
+                      <Feather name="trash-2" size={16} color={theme.textSecondary} />
+                    </Pressable>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -268,12 +466,30 @@ export default function CalendarScreen() {
       ) : (
         <Card elevation={1}>
           <View style={styles.emptyState}>
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            <Feather name="calendar" size={32} color={theme.textSecondary} />
+            <Spacer height={Spacing.sm} />
+            <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: "center" }}>
               Tap a day to see what's happening
             </ThemedText>
           </View>
         </Card>
       )}
+
+      <Spacer height={Spacing.lg} />
+
+      <Card elevation={1}>
+        <View style={styles.legendSection}>
+          <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Legend</ThemedText>
+          <View style={styles.legendGrid}>
+            {filters.filter(f => f.id !== "all").map((f) => (
+              <View key={f.id} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: f.color }]} />
+                <ThemedText type="caption">{f.label}</ThemedText>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Card>
 
       <Spacer height={Spacing["4xl"]} />
 
@@ -305,39 +521,39 @@ export default function CalendarScreen() {
 
             <View style={styles.typeRow}>
               <Pressable
-                onPress={() => setNewEventType("event")}
+                onPress={() => setNewEventType("events")}
                 style={[
                   styles.typeButton,
-                  { backgroundColor: newEventType === "event" ? theme.primary : theme.surfaceVariant },
+                  { backgroundColor: newEventType === "events" ? theme.primary : theme.surfaceVariant },
                 ]}
               >
                 <Feather
                   name="calendar"
                   size={16}
-                  color={newEventType === "event" ? "#FFFFFF" : theme.text}
+                  color={newEventType === "events" ? "#FFFFFF" : theme.text}
                 />
                 <ThemedText
                   type="small"
-                  style={{ color: newEventType === "event" ? "#FFFFFF" : theme.text }}
+                  style={{ color: newEventType === "events" ? "#FFFFFF" : theme.text }}
                 >
                   Event
                 </ThemedText>
               </Pressable>
               <Pressable
-                onPress={() => setNewEventType("reminder")}
+                onPress={() => setNewEventType("reminders")}
                 style={[
                   styles.typeButton,
-                  { backgroundColor: newEventType === "reminder" ? theme.accent : theme.surfaceVariant },
+                  { backgroundColor: newEventType === "reminders" ? theme.accent : theme.surfaceVariant },
                 ]}
               >
                 <Feather
                   name="bell"
                   size={16}
-                  color={newEventType === "reminder" ? "#FFFFFF" : theme.text}
+                  color={newEventType === "reminders" ? "#FFFFFF" : theme.text}
                 />
                 <ThemedText
                   type="small"
-                  style={{ color: newEventType === "reminder" ? "#FFFFFF" : theme.text }}
+                  style={{ color: newEventType === "reminders" ? "#FFFFFF" : theme.text }}
                 >
                   Reminder
                 </ThemedText>
@@ -423,17 +639,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 2,
     marginTop: 2,
+    flexWrap: "wrap",
+    justifyContent: "center",
+    maxWidth: 24,
   },
   indicator: {
     width: 4,
     height: 4,
     borderRadius: 2,
   },
-  filterRow: {
-    flexDirection: "row",
+  filterScrollContent: {
+    paddingHorizontal: Spacing.xs,
     gap: Spacing.sm,
   },
   filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.sm,
@@ -444,9 +665,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: "auto",
   },
   selectedDateHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   emptyState: {
@@ -459,16 +682,45 @@ const styles = StyleSheet.create({
   eventItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.md,
+    gap: Spacing.sm,
     paddingVertical: Spacing.sm,
   },
   eventIndicator: {
-    width: 4,
+    width: 3,
     height: 36,
     borderRadius: 2,
   },
+  eventIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   eventContent: {
     flex: 1,
+  },
+  eventMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  legendSection: {
+    paddingVertical: Spacing.sm,
+  },
+  legendGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.md,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   modalOverlay: {
     flex: 1,

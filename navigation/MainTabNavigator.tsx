@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import TrackStackNavigator from "@/navigation/TrackStackNavigator";
+import CalendarStackNavigator from "@/navigation/CalendarStackNavigator";
 import InsightsStackNavigator from "@/navigation/InsightsStackNavigator";
 import SettingsStackNavigator from "@/navigation/SettingsStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -15,6 +16,7 @@ import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 export type MainTabParamList = {
   HomeTab: undefined;
   TrackTab: undefined;
+  CalendarTab: undefined;
   InsightsTab: undefined;
   SettingsTab: undefined;
 };
@@ -93,6 +95,16 @@ export default function MainTabNavigator() {
           title: "Track",
           tabBarIcon: ({ color, size }) => (
             <Feather name="edit-3" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CalendarTab"
+        component={CalendarStackNavigator}
+        options={{
+          title: "Calendar",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="calendar" size={size} color={color} />
           ),
         }}
       />

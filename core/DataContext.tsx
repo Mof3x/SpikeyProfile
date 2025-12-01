@@ -72,6 +72,31 @@ export interface EmergencyContact {
   relationship: string;
 }
 
+export interface MedicalInfo {
+  allergies: string[];
+  medications: string[];
+  diagnoses: string[];
+  bloodType: string;
+  notes: string;
+}
+
+export interface CrisisScript {
+  id: string;
+  title: string;
+  content: string;
+  category: "sensory" | "anxiety" | "meltdown" | "medical" | "custom";
+  enabled: boolean;
+}
+
+export interface LowSensorySettings {
+  enabled: boolean;
+  reduceAnimations: boolean;
+  reduceContrast: boolean;
+  quietHaptics: boolean;
+  simplifyUI: boolean;
+  muteNotificationSounds: boolean;
+}
+
 export interface AlarmSchedule {
   id: string;
   name: string;
@@ -103,6 +128,33 @@ export interface PatternInsight {
   icon: string;
   type: "positive" | "neutral" | "warning";
 }
+
+export type WidgetId = 
+  | "gamification" 
+  | "symptomTracker" 
+  | "todoList" 
+  | "calendar" 
+  | "nfcModule" 
+  | "pomodoro" 
+  | "alarms" 
+  | "clipboardTray" 
+  | "patternInsights" 
+  | "emergency"
+  | "countdown"
+  | "countup";
+
+export const DEFAULT_WIDGET_ORDER: WidgetId[] = [
+  "gamification",
+  "symptomTracker",
+  "todoList",
+  "calendar",
+  "nfcModule",
+  "pomodoro",
+  "alarms",
+  "clipboardTray",
+  "patternInsights",
+  "emergency",
+];
 
 interface DataContextType {
   symptomEntries: SymptomEntry[];
@@ -139,6 +191,12 @@ interface DataContextType {
   updateEmergencyContact: (id: string, contact: Partial<EmergencyContact>) => void;
   emergencyMessage: string;
   setEmergencyMessage: (message: string) => void;
+  medicalInfo: MedicalInfo;
+  setMedicalInfo: (info: MedicalInfo) => void;
+  crisisScripts: CrisisScript[];
+  addCrisisScript: (script: Omit<CrisisScript, "id">) => void;
+  removeCrisisScript: (id: string) => void;
+  updateCrisisScript: (id: string, script: Partial<CrisisScript>) => void;
   alarmSchedules: AlarmSchedule[];
   addAlarmSchedule: (schedule: Omit<AlarmSchedule, "id" | "createdAt" | "notificationIds">) => void;
   updateAlarmSchedule: (id: string, schedule: Partial<AlarmSchedule>) => void;
@@ -148,6 +206,10 @@ interface DataContextType {
   insights: PatternInsight[];
   userName: string;
   setUserName: (name: string) => void;
+  widgetOrder: WidgetId[];
+  setWidgetOrder: (order: WidgetId[]) => void;
+  lowSensorySettings: LowSensorySettings;
+  setLowSensorySettings: (settings: LowSensorySettings) => void;
   isLoading: boolean;
 }
 
@@ -167,7 +229,59 @@ const STORAGE_KEYS = {
   alarmSchedules: "@spikeyprofile/alarmSchedules",
   userStats: "@spikeyprofile/userStats",
   userName: "@spikeyprofile/userName",
+  widgetOrder: "@spikeyprofile/widgetOrder",
+  medicalInfo: "@spikeyprofile/medicalInfo",
+  crisisScripts: "@spikeyprofile/crisisScripts",
+  lowSensorySettings: "@spikeyprofile/lowSensorySettings",
 };
+
+const DEFAULT_LOW_SENSORY_SETTINGS: LowSensorySettings = {
+  enabled: false,
+  reduceAnimations: false,
+  reduceContrast: false,
+  quietHaptics: false,
+  simplifyUI: false,
+  muteNotificationSounds: false,
+};
+
+const DEFAULT_MEDICAL_INFO: MedicalInfo = {
+  allergies: [],
+  medications: [],
+  diagnoses: [],
+  bloodType: "",
+  notes: "",
+};
+
+const DEFAULT_CRISIS_SCRIPTS: CrisisScript[] = [
+  {
+    id: "1",
+    title: "Sensory Overload",
+    content: "I am autistic and currently experiencing sensory overload. I need a quieter, calmer environment. Please speak softly and reduce bright lights if possible.",
+    category: "sensory",
+    enabled: true,
+  },
+  {
+    id: "2",
+    title: "Anxiety Attack",
+    content: "I am having an anxiety attack. I am not in danger but need a moment to calm down. Please give me space and speak calmly.",
+    category: "anxiety",
+    enabled: true,
+  },
+  {
+    id: "3",
+    title: "Processing Difficulty",
+    content: "I have ADHD/autism and am having trouble processing information right now. Please speak slowly and give me time to respond.",
+    category: "meltdown",
+    enabled: true,
+  },
+  {
+    id: "4",
+    title: "Medical Information",
+    content: "I have medical conditions that affect my behavior. Please check my phone for medical information and emergency contacts.",
+    category: "medical",
+    enabled: true,
+  },
+];
 
 const INITIAL_STATS: UserStats = {
   totalEntries: 0,
@@ -297,6 +411,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [quickLogEntries, setQuickLogEntries] = useState<QuickLogEntry[]>([]);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [emergencyMessage, setEmergencyMessageState] = useState("Help - please contact me");
+  const [medicalInfo, setMedicalInfoState] = useState<MedicalInfo>(DEFAULT_MEDICAL_INFO);
+  const [crisisScripts, setCrisisScripts] = useState<CrisisScript[]>(DEFAULT_CRISIS_SCRIPTS);
+  const [lowSensorySettings, setLowSensorySettingsState] = useState<LowSensorySettings>(DEFAULT_LOW_SENSORY_SETTINGS);
   const [alarmSchedules, setAlarmSchedules] = useState<AlarmSchedule[]>([]);
   const [userStats, setUserStats] = useState<UserStats>({
     ...INITIAL_STATS,
@@ -308,6 +425,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const [insights] = useState<PatternInsight[]>(DEFAULT_INSIGHTS);
   const [userName, setUserNameState] = useState("");
+  const [widgetOrder, setWidgetOrderState] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
 
   useEffect(() => {
     loadAllData();
@@ -329,6 +447,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedAlarms,
         storedStats,
         storedName,
+        storedWidgetOrder,
+        storedMedicalInfo,
+        storedCrisisScripts,
+        storedLowSensory,
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.symptomEntries),
         AsyncStorage.getItem(STORAGE_KEYS.clipboardItems),
@@ -343,6 +465,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.alarmSchedules),
         AsyncStorage.getItem(STORAGE_KEYS.userStats),
         AsyncStorage.getItem(STORAGE_KEYS.userName),
+        AsyncStorage.getItem(STORAGE_KEYS.widgetOrder),
+        AsyncStorage.getItem(STORAGE_KEYS.medicalInfo),
+        AsyncStorage.getItem(STORAGE_KEYS.crisisScripts),
+        AsyncStorage.getItem(STORAGE_KEYS.lowSensorySettings),
       ]);
 
       if (storedSymptoms) setSymptomEntries(deserializeData(storedSymptoms));
@@ -358,6 +484,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (storedAlarms) setAlarmSchedules(deserializeData(storedAlarms));
       if (storedStats) setUserStats(deserializeData(storedStats));
       if (storedName) setUserNameState(storedName);
+      
+      if (storedWidgetOrder) {
+        try {
+          const parsed = JSON.parse(storedWidgetOrder);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setWidgetOrderState(parsed);
+          }
+        } catch {
+          setWidgetOrderState(DEFAULT_WIDGET_ORDER);
+        }
+      }
+      
+      if (storedMedicalInfo) {
+        try {
+          const parsed = JSON.parse(storedMedicalInfo);
+          setMedicalInfoState({ ...DEFAULT_MEDICAL_INFO, ...parsed });
+        } catch {
+          setMedicalInfoState(DEFAULT_MEDICAL_INFO);
+        }
+      }
+      
+      if (storedCrisisScripts) {
+        try {
+          const parsed = JSON.parse(storedCrisisScripts);
+          if (Array.isArray(parsed)) {
+            setCrisisScripts(parsed);
+          }
+        } catch {
+          setCrisisScripts(DEFAULT_CRISIS_SCRIPTS);
+        }
+      }
+      
+      if (storedLowSensory) {
+        try {
+          const parsed = JSON.parse(storedLowSensory);
+          setLowSensorySettingsState({ ...DEFAULT_LOW_SENSORY_SETTINGS, ...parsed });
+        } catch {
+          setLowSensorySettingsState(DEFAULT_LOW_SENSORY_SETTINGS);
+        }
+      }
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
@@ -629,6 +795,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
     saveToStorage(STORAGE_KEYS.userName, name);
   }, [saveToStorage]);
 
+  const setWidgetOrder = useCallback((order: WidgetId[]) => {
+    setWidgetOrderState(order);
+    saveToStorage(STORAGE_KEYS.widgetOrder, JSON.stringify(order));
+  }, [saveToStorage]);
+
+  const setMedicalInfo = useCallback((info: MedicalInfo) => {
+    setMedicalInfoState(info);
+    saveToStorage(STORAGE_KEYS.medicalInfo, JSON.stringify(info));
+  }, [saveToStorage]);
+
+  const addCrisisScript = useCallback((script: Omit<CrisisScript, "id">) => {
+    setCrisisScripts((prev) => {
+      const newScript: CrisisScript = { ...script, id: Date.now().toString() };
+      const updated = [...prev, newScript];
+      saveToStorage(STORAGE_KEYS.crisisScripts, JSON.stringify(updated));
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeCrisisScript = useCallback((id: string) => {
+    setCrisisScripts((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveToStorage(STORAGE_KEYS.crisisScripts, JSON.stringify(updated));
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateCrisisScript = useCallback((id: string, script: Partial<CrisisScript>) => {
+    setCrisisScripts((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, ...script } : s));
+      saveToStorage(STORAGE_KEYS.crisisScripts, JSON.stringify(updated));
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const setLowSensorySettings = useCallback((settings: LowSensorySettings) => {
+    setLowSensorySettingsState(settings);
+    saveToStorage(STORAGE_KEYS.lowSensorySettings, JSON.stringify(settings));
+  }, [saveToStorage]);
+
   const addAlarmSchedule = useCallback((schedule: Omit<AlarmSchedule, "id" | "createdAt" | "notificationIds">) => {
     setAlarmSchedules((prev) => {
       const newSchedule: AlarmSchedule = {
@@ -704,6 +910,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateEmergencyContact,
         emergencyMessage,
         setEmergencyMessage,
+        medicalInfo,
+        setMedicalInfo,
+        crisisScripts,
+        addCrisisScript,
+        removeCrisisScript,
+        updateCrisisScript,
         alarmSchedules,
         addAlarmSchedule,
         updateAlarmSchedule,
@@ -713,6 +925,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         insights,
         userName,
         setUserName,
+        widgetOrder,
+        setWidgetOrder,
+        lowSensorySettings,
+        setLowSensorySettings,
         isLoading,
       }}
     >

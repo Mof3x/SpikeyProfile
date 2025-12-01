@@ -1,0 +1,552 @@
+SpikeyProfile: App Requirements & User Personas
+Derived from Smartphone Assistive Technology Research (n=49)
+EXECUTIVE SUMMARY
+Research Participant Base:
+
+Total Respondents: 49 (92% active response rate)
+
+Age Distribution: Heavily skewed to 45–54 (51%, n=25); secondary clusters at 16–24 (22%, n=11), 25–34 (16%, n=8), 35–44 (10%, n=5)
+
+Platform Split: iOS 59% (n=29), Android 55% (n=27) [some participants use both]
+
+Tech Comfort: 53% Promoters (n=26), 39% Passives (n=19), 8% Detractors (n=4)
+
+Assistive Potential: 67% ("Definitely" + "Probably Yes") believe smartphone assistive features could substantially reduce daily challenge impact[attached_file:1]
+
+PART 1: FUNCTIONAL REQUIREMENTS
+FR1 – Multi-Reminder & Task Management System
+Priority: Critical (P0)
+Data Support: 29% (n=14) explicitly requested "multiple alarms," "daily basis reminders," "daily routine," "supportive reminders" in open responses.[attached_file:1]
+
+Requirements:
+
+FR1.1 – Support 3+ independent reminders per single task or routine, with configurable delays (e.g. "prepare 30 mins before," "5 min warning," "start now," "final check")
+
+FR1.2 – Reminders must be dismissible independently; dismissing one reminder does not dismiss others for the same task
+
+FR1.3 – Support multiple modalities per reminder: sound, vibration, voice notification, visual badge, each configurable per task or globally
+
+FR1.4 – Allow recurring task templates (daily, weekly, monthly) with copy-forward functionality to reduce setup cognitive load
+
+FR1.5 – "Daily Brief" screen at unlock or designated time that summarizes all today's tasks, appointments, medications and key data in non-scrolling, text-simplified format
+
+FR1.6 – Allow snoozing with non-destructive reschedule (snooze without losing the reminder)
+
+Test Acceptance: User can set, see, and independently manage 3 staggered reminders for one task; "Daily Brief" loads in <1 second with essential information visible without scrolling
+
+FR2 – Non-Memory-Reliant Health & Medication Tracking
+Priority: Critical (P0)
+Data Support: ~50–60% reported moderate-to-severe impact from "remembering to take medications," "tracking medication schedules," "remembering medical appointments."[attached_file:1]
+
+Requirements:
+
+FR2.1 – NFC-based quick-log: tap an NFC tag (e.g. placed near medicine cabinet) with phone to instantly log medication taken, with auto-timestamp
+
+FR2.2 – Fallback: one-tap manual log if NFC unavailable; no multi-step forms
+
+FR2.3 – Medication history view showing last 7 days with visual confirmation (checkmark, ticks) and pattern warnings ("you've missed 3 doses in a row")
+
+FR2.4 – Health symptom tracking with minimal entry (pre-set mood/energy/pain scales, quick-tap, no text entry unless user chooses)
+
+FR2.5 – Appointment reminders with integrated location data and preparation tasks (e.g. "appointment in 2 hours" → "gather questions" → "leave in 20 mins" → "you're here")
+
+FR2.6 – Simple meal/water reminders with quick-log (did/didn't eat; how much water) for users who forget self-care
+
+FR2.7 – Export medication and appointment data in human-readable format for healthcare providers
+
+Test Acceptance: User can log med with NFC in 1 tap; view 7-day history; see pattern warnings; all health data exported to PDF in <2 seconds
+
+FR3 – Low-Step Task Completion & Work/Education Support
+Priority: High (P1)
+Data Support: 86% (n=42) prefer tasks completed in ≤4 steps; 42 of 49 want 1–4 steps max.[attached_file:1] ~60–70% report moderate-to-severe impact from "forgetting to start tasks," "trouble breaking large tasks into steps," "managing work deadlines," "organizing projects."[attached_file:1]
+
+Requirements:
+
+FR3.1 – Task creation in ≤3 steps: (1) title, (2) due date/time, (3) optional reminders → done
+
+FR3.2 – Pre-built task templates for common workflows (e.g. "prepare for meeting," "complete assignment," "attend appointment") with substeps pre-filled
+
+FR3.3 – One-tap "break this into steps" AI suggestion for complex tasks (e.g. user says "write essay" → app suggests outline, research, draft, edit, submit)
+
+FR3.4 – Project grouping: tasks can be tagged to a project/course/job, with all related tasks, notes, links visible in one place
+
+FR3.5 – Quick-capture from notifications, shared links, emails: forward or tap-share to create task without leaving the app
+
+FR3.6 – Work/education context mode: simplified interface showing only today's tasks, current project, and next deadline
+
+FR3.7 – Meeting note auto-capture: one-tap recording with auto-transcription, linked to the project/task
+
+Test Acceptance: User creates task with template in 2 steps; finds and filters project tasks in <3 taps; recording transcription live within 60 seconds
+
+FR4 – Sensory Accessibility & Customization
+Priority: Critical (P0)
+Data Support: ~40–50% report moderate-to-severe impact from "bright/flickering lights," "loud or unexpected noises," "overwhelming visual information," "problems with screen brightness/contrast."[attached_file:1]
+
+Requirements:
+
+FR4.1 – Dark mode as first-class, system-wide feature (not a toggle buried in settings), accessible from lock screen or quick-access menu
+
+FR4.2 – High-contrast mode with adjustable background/text colors for color-blindness and light sensitivity
+
+FR4.3 – One-tap "low sensory mode" that disables animations, reduces notification volume, dims screen, and blocks non-essential notifications
+
+FR4.4 – Adjustable font sizes (10px to 24px minimum) applied consistently across all screens
+
+FR4.5 – Dyslexia-friendly font option (e.g. OpenDyslexic or similar) available system-wide
+
+FR4.6 – Notifications mute schedule (do not disturb with exceptions for emergency contacts)
+
+FR4.7 – Visual accessibility: ensure all text has minimum 4.5:1 contrast ratio; all interactive elements ≥48px; no reliance on color alone to convey meaning
+
+FR4.8 – Settings retain user preferences persistently; no need to re-select on each launch
+
+Test Acceptance: Dark mode loads on first launch; high-contrast mode passes WCAG AA for all text/buttons; low sensory mode reduces notification volume by >70% and disables animations
+
+FR5 – Emergency & Crisis Support
+Priority: Critical (P0)
+Data Support: 37% (n=18) selected "emergency situations" as top context needing quick, minimal-step access.[attached_file:1] High impact reported on "managing overwhelming situations," "accessing emergency info quickly," "contacting family during emergencies."[attached_file:1]
+
+Requirements:
+
+FR5.1 – Emergency Mode: one-tap access from lock screen (or 2-step: hold power button + tap "emergency")
+
+FR5.2 – Emergency Mode displays pre-set emergency contacts (phone numbers, SMS, WhatsApp) with one-tap to call/message
+
+FR5.3 – Optional auto-send location + SOS message to emergency contacts (with clear user consent and preview)
+
+FR5.4 – Pre-written scripts or cards (e.g. "I am autistic and currently experiencing sensory overload") that can be shown or read aloud to first responders or strangers
+
+FR5.5 – Medical information card (allergies, current meds, disabilities, relevant diagnoses) accessible in Emergency Mode without unlocking phone fully
+
+FR5.6 – Integration with device accessibility features (e.g. iOS/Android emergency SOS) where possible; do not duplicate OS functionality unnecessarily
+
+Test Acceptance: Emergency Mode accessed in 1–2 taps from lock screen; emergency contact called/messaged in 1 additional tap; medical info visible in <2 seconds
+
+FR6 – Travel & Navigation Support
+Priority: High (P1)
+Data Support: 53% (n=26) selected "while traveling or navigating" as top context for minimal-step access.[attached_file:1] High daily impact from "finding way in unfamiliar places," "using public transport," "managing travel anxiety," "dealing with busy/noisy environments while traveling."[attached_file:1]
+
+Requirements:
+
+FR6.1 – One-tap "Travel Mode" that opens maps, shows simplified current route, and hides non-essential UI
+
+FR6.2 – Pre-set "trusted locations" (home, work, frequent destinations) with one-tap navigation shortcuts
+
+FR6.3 – Journey planner that factors in sensory preferences (e.g. "avoid crowded bus stops," "prefer quieter routes")
+
+FR6.4 – Auto-send ETA and check-in to a trusted contact when traveling (with user setup and consent)
+
+FR6.5 – Offline map/route data for areas with poor connectivity
+
+FR6.6 – Accessible transport timetables with simplified formatting (large text, high contrast)
+
+FR6.7 – Quiet space finder: integration with location data to show nearby parks, libraries, quiet cafes (or manual user input)
+
+Test Acceptance: Travel Mode opens map in <1 second; trusted location navigation in 1 tap; check-in message sent automatically
+
+FR7 – Financial Tracking & Bill Reminders
+Priority: Medium (P2)
+Data Support: 45–55% report moderate-to-severe impact from "remembering to pay bills," "keeping track of spending," "budgeting effectively," "avoiding impulse purchases."[attached_file:1]
+
+Requirements:
+
+FR7.1 – Simple bill reminder system: add bill name, due date, amount; receive reminders 7 days and 1 day before
+
+FR7.2 – Quick spending log: tap category (groceries, transport, entertainment) + amount; optional note
+
+FR7.3 – Visual spending summary (bar chart or simple text) by category for the current month, updated automatically
+
+FR7.4 – One-tap "snooze bill payment" without losing the reminder (reschedule for later)
+
+FR7.5 – Simple budget setup: user sets monthly budget per category; app warns if spending exceeds threshold
+
+FR7.6 – No integration with banking APIs initially (avoid security/GDPR complexity); manual entry or CSV import for initial MVP
+
+Test Acceptance: Bill reminder created in 3 steps; spending logged in 2 taps; monthly summary visible in <1 second
+
+FR8 – Communication & Social Support
+Priority: Medium (P2)
+Data Support: ~40–50% report moderate-to-severe impact from "writing emails/messages," "maintaining friendships," "communicating in group settings," "making phone calls."[attached_file:1]
+
+Requirements:
+
+FR8.1 – Message templates for common scenarios (e.g. "ask for help," "reschedule appointment," "say goodbye") that can be customized and sent
+
+FR8.2 – Picture-in-picture for phone calls: keep app content visible while on a call (e.g. notes, scripts, conversation guide)
+
+FR8.3 – Optional voice-to-text for messaging with manual review before send
+
+FR8.4 – Community forum or moderated discussion space with disability-specific forums (autism, ADHD, dyslexia, dyspraxia, etc.)
+
+FR8.5 – Signposting to external resources: links to crisis hotlines, disability support organizations, peer communities
+
+FR8.6 – Do not attempt to diagnose or provide medical advice; offer educational resources and signpost to professionals
+
+Test Acceptance: Message template loaded and edited in <30 seconds; forum categories visible; crisis hotline links accessible in 1 tap
+
+FR9 – Clipboard/Multi-Item Tray
+Priority: Medium (P2)
+Data Support: Mentioned in proposal as addressing executive function support; users report difficulty with "organizing digital information" and "remembering multi-step processes."[attached_file:1]
+
+Requirements:
+
+FR9.1 – Floating "clipboard" widget that holds up to 10 items (text, links, images) without losing them
+
+FR9.2 – Add items by selecting text/image, copying, or manually typing
+
+FR9.3 – Access clipboard from anywhere in the app (floating button or quick-access menu)
+
+FR9.4 – Persist across sessions; do not clear clipboard on app close
+
+FR9.5 – Optional auto-clear after 24 hours to avoid clutter
+
+Test Acceptance: User adds 10 items; clipboard persists across app restarts; items retrievable in <2 taps
+
+FR10 – Interaction Modality Support
+Priority: High (P1)
+Data Support: 88% (n=43) prefer touch/tap; 45% (n=22) also use voice commands; 39% (n=19) use physical buttons; 6% (n=3) use eye tracking.[attached_file:1]
+
+Requirements:
+
+FR10.1 – All primary functions accessible via touch/tap; large, forgiving buttons (minimum 48px)
+
+FR10.2 – Voice command support for common tasks: "set reminder," "log medication," "call [contact]," "open travel mode," "emergency"
+
+FR10.3 – Physical button support: volume buttons or accessibility button can trigger preset actions (e.g. volume up = open daily brief, volume down = emergency mode)
+
+FR10.4 – Integration with iOS/Android accessibility features (Switch Control, Voice Control) where applicable
+
+FR10.5 – No reliance on any single modality; user can choose touch, voice, buttons, or switches for each task
+
+Test Acceptance: All P0 tasks (medication log, reminder, emergency) accessible via touch, voice, and buttons independently
+
+PART 2: NON-FUNCTIONAL REQUIREMENTS
+NFR1 – Performance
+App launches in <2 seconds on modern smartphones (iPhone 11+, Android 10+)
+
+"Daily Brief" loads in <1 second
+
+Reminder notifications delivered within 30 seconds of scheduled time
+
+NFC tag read/log in <0.5 seconds
+
+No noticeable lag when switching between tasks/screens
+
+NFR2 – Reliability & Data Integrity
+Reminders must never be silently lost; use local storage + cloud sync with conflict resolution
+
+Medication logs must be persisted offline and synced when connection returns
+
+No data loss on app crash; use transactional writes
+
+Backup and restore functionality for user data
+
+NFR3 – Accessibility (WCAG 2.1 AA minimum)
+All text ≥ 4.5:1 contrast ratio
+
+Interactive elements ≥ 48px minimum
+
+No flickering elements (≤3 Hz)
+
+Keyboard navigation fully supported
+
+Screen reader compatible (VoiceOver, TalkBack)
+
+No color-only indicators
+
+NFR4 – Data Privacy & Security
+GDPR compliant (UK/EU data handling)
+
+End-to-end encryption for health data (medication, mood, appointments)
+
+Optional offline mode: all features work without network connection
+
+No tracking or behavioral profiling; transparent data policy
+
+User data never sold or shared with third parties
+
+Clear, accessible privacy policy in plain language (not legalese)
+
+NFR5 – Scalability & Maintainability
+Modular architecture: features can be toggled on/off without breaking core app
+
+Cloud backend optional; core app functions standalone
+
+AI/ML features (task breakdown suggestions, pattern spotting) should be explainable and not black-box
+
+Code documented for solo developer handoff or team onboarding
+
+PART 3: USER PERSONAS
+Persona 1: Alex (Primary User, Age 45–54, Employed)
+Profile:
+
+Age: 49, works in office management
+
+Diagnosed: ADHD with executive dysfunction; mild dyslexia
+
+Tech comfort: Promoter (very comfortable with iOS and Android)
+
+Challenges: Losing track of time, forgetting appointments, organizing digital files, managing work emails, difficulty breaking tasks into steps
+
+Key Behaviors:
+
+Relies on phone alarms (currently sets 5+ alarms per important task)
+
+Struggles to remember medication schedule despite wanting to
+
+Forgets appointments despite having them in calendar
+
+Finds reminder apps insufficient (single reminder not enough)
+
+Uses dark mode on personal phone; triggered by bright screens
+
+Needs:
+
+Multiple, staggered reminders for one task
+
+Medication tracker that doesn't rely on manual memory (NFC ideal)
+
+Task templates for recurring work tasks
+
+Ability to break complex projects into steps
+
+Dark mode + high-contrast UI
+
+Quick, 1–2 tap access to critical functions
+
+Success Metric: Uses app daily for medication reminders, task tracking, and appointment prep; reports feeling "less overwhelmed" after 2 weeks
+
+Persona 2: Jordan (Secondary User, Age 25–34, Student)
+Profile:
+
+Age: 28, pursuing graduate degree part-time while working freelance
+
+Diagnosed: Autism spectrum + ADHD; dyslexia
+
+Tech comfort: Passive (knows phones, occasional app issues frustrate them)
+
+Challenges: Reading text on screens, processing large amounts of information, managing work deadlines, organizing notes, social communication in group settings
+
+Key Behaviors:
+
+Takes extensive handwritten notes; struggles to digitize them
+
+Finds most reminder apps "too wordy" and overwhelming
+
+Communicates better via email than phone; anxious about calls
+
+Prefers visual information over text (diagrams, icons, symbols)
+
+Uses larger font sizes; zooms frequently
+
+Needs:
+
+Auto-transcription for lecture/meeting recordings
+
+Dyslexia-friendly font and simplified text display
+
+Quick-capture for notes (photo, audio, text) linked to projects
+
+Simple project grouping (all tasks + notes + links for one assignment)
+
+Message templates for group communication
+
+Visual summaries (charts, icons) over text-heavy dashboards
+
+Success Metric: Records and transcribes lectures without manual entry; stays on top of assignment deadlines; sends messages using templates with reduced anxiety
+
+Persona 3: Casey (Tertiary User, Age 16–24, Neurodivergent Caregiver)
+Profile:
+
+Age: 20, caregiver for parent with ADHD and chronic health issues
+
+Not formally diagnosed but suspects neurodivergence (ADHD traits)
+
+Tech comfort: Promoter (native smartphone user; early adopter)
+
+Challenges: Remembering parent's medication schedule, managing parent's appointments, travel anxiety, sensory overload in busy environments
+
+Key Behaviors:
+
+Sets phone reminders for parent's medications but misses some
+
+Accompanies parent to appointments and takes notes
+
+Travels frequently via public transport; gets overwhelmed in crowds
+
+Uses voice-to-text occasionally
+
+Switches between iOS (personal) and Android (parent's tablet)
+
+Needs:
+
+Multi-reminder system for shared tasks (own reminders + parent's meds)
+
+Quiet space finder for anxiety management during travel
+
+Simple expense tracking for shared costs
+
+Voice commands for hands-free reminders while traveling
+
+Shared access to parent's health data (with privacy safeguards)
+
+Community/peer support for caregivers
+
+Success Metric: Parent never misses medication; user feels less anxious during travel; uses app 3–4 times daily
+
+Persona 4: Ravi (Edge Case, Age 35–44, Motor Challenges)
+Profile:
+
+Age: 41, freelance designer with dyspraxia (fine motor difficulties)
+
+Tech comfort: Detractor (frustrated with small buttons, autocorrect errors)
+
+Challenges: Using touch screens accurately, small button clicking, typing, maintaining focus, managing work deadlines
+
+Key Behaviors:
+
+Frequently misses touches on small buttons; accidental presses cause frustration
+
+Avoids typing; prefers voice or selection-based input
+
+Large phone screen helps; frequent dropped phone
+
+Uses external stylus for precision; not always successful
+
+Works from home to avoid sensory overload
+
+Needs:
+
+Extra-large buttons (≥60px) for all critical functions
+
+Voice command primary interface (touch secondary)
+
+Physical button support (volume buttons as shortcuts)
+
+Auto-correction that doesn't interfere (or can be disabled)
+
+Simplified, uncluttered screens
+
+One-tap access to all P0 features
+
+Success Metric: User can complete core tasks (medication log, reminder, emergency) without frustration; uses voice input as primary modality
+
+PART 4: INTERACTION CONTEXT MATRIX
+High-Priority Contexts (where app must be fastest & simplest):
+
+Context	% of Respondents	Required Features	Max Steps
+While traveling/navigating	53% (n=26)	Travel mode, maps, check-in, quiet spaces	1–2
+During medical situations	37% (n=18)	Medical info, appointment reminders, health history	1–2
+In emergency situations	37% (n=18)	Emergency mode, SOS, scripts, emergency contacts	1–2
+Work/education tasks	29% (n=14)	Task grouping, project view, deadline alerts	2–3
+Feeling overwhelmed/stressed	22% (n=11)	Low sensory mode, calm prompts, grounding exercises	1–2
+Quick information capture	24% (n=12)	Rapid note/reminder creation, clipboard	1–2
+Daily routines	14% (n=7)	Routine templates, daily brief, morning checklist	2–3
+PART 5: ACCESSIBILITY & INCLUSION CRITERIA
+By Challenge Type (% with Moderate-to-Severe Impact)
+Executive Function & Time Management (60–70% impact):
+
+Losing track of time, forgetting tasks, difficulty prioritizing, trouble breaking tasks down
+
+App Must: Multi-reminders, task templates, daily brief, time/duration estimates
+
+Sensory Processing (40–50% impact):
+
+Bright/flickering lights, loud noises, overwhelming visual info, screen brightness/contrast issues
+
+App Must: Dark mode, high contrast, low sensory mode, notification muting, animations off
+
+Literacy & Information Processing (50–60% impact):
+
+Reading text, understanding complex instructions, processing large amounts of info
+
+App Must: Dyslexia-friendly fonts, text-to-speech, simplified language, visual summaries
+
+Health & Self-Care (50–60% impact):
+
+Remembering meds, tracking appointments, monitoring symptoms, managing hygiene/meals
+
+App Must: NFC logging, health tracker, appointment integration, easy-to-use self-care reminders
+
+Travel & Navigation (50–70% impact):
+
+Unfamiliar places, public transport, crowded spaces, route anxiety, noisy environments
+
+App Must: Simplified maps, journey planner, quiet space finder, sensory preferences
+
+Social & Communication (40–50% impact):
+
+Starting conversations, writing emails/messages, phone anxiety, group dynamics
+
+App Must: Message templates, scripts, voice-to-text, community forum, crisis signposting
+
+Emergencies & Crises (40–60% impact):
+
+Managing panic, contacting help, communicating needs to first responders, medical emergencies
+
+App Must: Emergency mode, SOS, medical info, scripts, one-tap emergency contacts
+
+PART 6: DESIGN PRINCIPLES (Neurodivergent-Centered)
+Shallow Interaction Paths: Max 1–4 steps for any primary task. No nested menus.
+
+Explicit, Not Hidden: All accessibility features (dark mode, text size, voice commands) on home screen or quick-access menu. Never buried in settings.
+
+Multimodal by Default: Touch, voice, buttons, gestures all primary options. No single point of failure.
+
+Customization First: Do not force one UI on all users. Themes, fonts, colors, notifications, reminder patterns all user-configurable.
+
+Non-Judgmental Language: No shame-based prompts ("You missed your medication!"). Neutral, supportive language ("Your next medication is due at 2pm. Would you like a reminder?").
+
+Transparent AI: If AI suggests task breakdown or pattern spotting, always explain the logic. No black-box recommendations.
+
+Low Cognitive Load: Avoid choice paralysis. Sensible defaults + optional customization. Simple language; no jargon.
+
+Community Over Isolation: Connect users to peers and resources, but respect privacy. Moderated forums, not algorithms.
+
+Offline-First: Core app functions (reminders, tracking, task management) work without internet. Cloud sync is bonus, not requirement.
+
+Accessibility by Design, Not Afterthought: WCAG AA compliance from day 1. Not a toggle; not a checkbox. Baked in.
+
+PART 7: PRIORITIZATION & MVP ROADMAP
+MVP (Weeks 1–8)
+Must-Have (P0):
+
+FR1 (multi-reminder system)
+
+FR2 (medication tracking, NFC or manual)
+
+FR4 (dark mode, high contrast, low sensory mode)
+
+FR5 (emergency mode with contacts)
+
+FR10 (touch + voice interaction)
+
+Nice-to-Have (P1):
+
+FR3 (task templates, work/education support)
+
+FR6 (travel mode basics)
+
+Basic social features (crisis hotline signposting)
+
+Phase 2 (Weeks 9–16)
+FR7 (financial tracking)
+
+FR8 (community forum, message templates)
+
+FR9 (clipboard tray)
+
+Advanced pattern spotting (mood ↔ dehydration, etc.)
+
+NFC tag setup wizard
+
+Phase 3 (Weeks 17–32)
+Machine learning for personalized reminders
+
+Integration with healthcare provider APIs
+
+Offline-first sync engine
+
+Detailed health analytics & insights
+
+International language support

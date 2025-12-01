@@ -8,10 +8,11 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { ScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import Spacer from "@/components/Spacer";
+import { NFCHowToGuide } from "@/components/NFCHowToGuide";
 import { useTheme } from "@/hooks/useTheme";
 import { useThemeContext, ThemeId, FontSize } from "@/core/ThemeContext";
 import { useModules, ModuleConfig } from "@/core/ModuleContext";
-import { useData } from "@/core/DataContext";
+import { useData, LowSensorySettings } from "@/core/DataContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 function SettingsSection({
@@ -236,6 +237,118 @@ function ModuleToggle({ module }: { module: ModuleConfig }) {
   );
 }
 
+function LowSensoryModeSettings() {
+  const { theme } = useTheme();
+  const { lowSensorySettings, setLowSensorySettings } = useData();
+
+  const toggleSetting = (key: keyof LowSensorySettings) => {
+    Haptics.selectionAsync();
+    const updated = { ...lowSensorySettings };
+    
+    if (key === "enabled") {
+      const newEnabled = !lowSensorySettings.enabled;
+      updated.enabled = newEnabled;
+      
+      if (newEnabled) {
+        const hasExistingPreferences = lowSensorySettings.reduceAnimations || 
+                                        lowSensorySettings.reduceContrast || 
+                                        lowSensorySettings.quietHaptics || 
+                                        lowSensorySettings.simplifyUI || 
+                                        lowSensorySettings.muteNotificationSounds;
+        
+        if (!hasExistingPreferences) {
+          updated.reduceAnimations = true;
+          updated.reduceContrast = true;
+          updated.quietHaptics = true;
+          updated.simplifyUI = true;
+          updated.muteNotificationSounds = true;
+        }
+      }
+    } else {
+      updated[key] = !lowSensorySettings[key];
+      const anyEnabled = updated.reduceAnimations || updated.reduceContrast || 
+                         updated.quietHaptics || updated.simplifyUI || updated.muteNotificationSounds;
+      updated.enabled = anyEnabled;
+    }
+    
+    setLowSensorySettings(updated);
+  };
+
+  const settings = [
+    { key: "reduceAnimations" as const, icon: "zap-off", label: "Reduce Animations", description: "Minimize motion effects" },
+    { key: "reduceContrast" as const, icon: "sun", label: "Softer Colors", description: "Lower color intensity" },
+    { key: "quietHaptics" as const, icon: "smartphone", label: "Quiet Haptics", description: "Gentler vibrations" },
+    { key: "simplifyUI" as const, icon: "layout", label: "Simplified UI", description: "Less visual complexity" },
+    { key: "muteNotificationSounds" as const, icon: "bell-off", label: "Silent Notifications", description: "Visual alerts only" },
+  ];
+
+  const getStatusText = () => {
+    if (!lowSensorySettings.enabled) {
+      return "Off - Customize below";
+    }
+    const enabledCount = [
+      lowSensorySettings.reduceAnimations,
+      lowSensorySettings.reduceContrast,
+      lowSensorySettings.quietHaptics,
+      lowSensorySettings.simplifyUI,
+      lowSensorySettings.muteNotificationSounds,
+    ].filter(Boolean).length;
+    
+    if (enabledCount === 5) {
+      return "On - All options enabled";
+    }
+    return `On - ${enabledCount} of 5 options active`;
+  };
+
+  return (
+    <View style={styles.lowSensoryContainer}>
+      <View style={styles.masterToggleRow}>
+        <View style={[styles.iconContainer, { backgroundColor: theme.primary + "20" }]}>
+          <Feather name="volume-x" size={18} color={theme.primary} />
+        </View>
+        <View style={styles.rowContent}>
+          <ThemedText type="body" style={styles.rowLabel}>
+            Low Sensory Mode
+          </ThemedText>
+          <ThemedText type="small" style={[styles.rowDescription, { color: theme.textSecondary }]}>
+            {getStatusText()}
+          </ThemedText>
+        </View>
+        <Switch
+          value={lowSensorySettings.enabled}
+          onValueChange={() => toggleSetting("enabled")}
+          trackColor={{ false: "#3A4150", true: theme.primary }}
+          thumbColor="#FFFFFF"
+        />
+      </View>
+
+      <View style={[styles.sensoryDivider, { backgroundColor: theme.divider }]} />
+
+      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+        Customize individual settings:
+      </ThemedText>
+
+      {settings.map((setting, index) => (
+        <View key={setting.key} style={styles.sensoryOptionRow}>
+          <View style={[styles.sensoryIcon, { backgroundColor: theme.surfaceVariant }]}>
+            <Feather name={setting.icon as any} size={16} color={theme.textSecondary} />
+          </View>
+          <View style={styles.sensoryOptionContent}>
+            <ThemedText type="body">{setting.label}</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>{setting.description}</ThemedText>
+          </View>
+          <Switch
+            value={lowSensorySettings[setting.key]}
+            onValueChange={() => toggleSetting(setting.key)}
+            trackColor={{ false: "#3A4150", true: theme.accent }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const { theme, typography } = useTheme();
   const { isDark, setIsDark, currentPreset } = useThemeContext();
@@ -243,6 +356,7 @@ export default function SettingsScreen() {
   const { userName, setUserName, userStats } = useData();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
+  const [showNFCGuide, setShowNFCGuide] = useState(false);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
@@ -410,6 +524,23 @@ export default function SettingsScreen() {
         />
       </SettingsSection>
 
+      <SettingsSection title="ACCESSIBILITY">
+        <LowSensoryModeSettings />
+      </SettingsSection>
+
+      <SettingsSection title="HELP">
+        <SettingsRow
+          icon="smartphone"
+          label="NFC Quick Log Guide"
+          description="Learn how to use NFC tags for instant logging"
+          onPress={() => setShowNFCGuide(true)}
+          rightElement={
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          }
+          isLast
+        />
+      </SettingsSection>
+
       <SettingsSection title="ABOUT">
         <SettingsRow
           icon="info"
@@ -420,6 +551,8 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       <Spacer height={Spacing["5xl"]} />
+
+      <NFCHowToGuide visible={showNFCGuide} onClose={() => setShowNFCGuide(false)} />
     </ScreenScrollView>
   );
 }
@@ -567,5 +700,33 @@ const styles = StyleSheet.create({
   },
   fontSizeLabel: {
     fontWeight: "600",
+  },
+  lowSensoryContainer: {
+    padding: Spacing.lg,
+  },
+  masterToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  sensoryDivider: {
+    height: 1,
+    marginVertical: Spacing.lg,
+  },
+  sensoryOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  sensoryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sensoryOptionContent: {
+    flex: 1,
   },
 });
