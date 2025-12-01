@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { StyleSheet, View, Pressable, ScrollView, Dimensions } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { LineChart, BarChart } from "react-native-chart-kit";
 import * as Haptics from "expo-haptics";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
+import { Card } from "@/components/Card";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
 import { useModules } from "@/core/ModuleContext";
@@ -19,8 +21,33 @@ type TimeRange = "week" | "month";
 export default function InsightsScreen() {
   const { theme } = useTheme();
   const { isModuleEnabled } = useModules();
-  const { symptomEntries, insights } = useData();
+  const { symptomEntries, insights, todos, customTrackerEntries } = useData();
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
+
+  const overviewData = useMemo(() => {
+    const now = new Date();
+    const daysBack = timeRange === "week" ? 7 : 30;
+    const entries = symptomEntries.slice(-daysBack);
+    
+    if (entries.length === 0) return null;
+    
+    const labels = Array.from({ length: Math.min(7, daysBack) }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (Math.min(7, daysBack) - 1 - i));
+      return d.toLocaleDateString("en-US", { weekday: "short" });
+    });
+    
+    const avgMood = entries.reduce((sum, e) => sum + e.mood, 0) / entries.length;
+    const avgEnergy = entries.reduce((sum, e) => sum + e.energy, 0) / entries.length;
+    const avgBrainFog = entries.reduce((sum, e) => sum + e.brainFog, 0) / entries.length;
+    
+    return {
+      labels,
+      datasets: [
+        { data: [avgMood, avgEnergy, avgBrainFog].map(v => Math.round(v * 10) / 10), color: () => theme.primary },
+      ],
+    };
+  }, [symptomEntries, timeRange, theme]);
 
   const handleRangeChange = (range: TimeRange) => {
     Haptics.selectionAsync();
@@ -113,8 +140,77 @@ export default function InsightsScreen() {
             <SpikyChart entries={symptomEntries} timeRange={timeRange} />
           </View>
           <Spacer height={Spacing.xl} />
+
+          {overviewData && (
+            <>
+              <Card style={{ padding: Spacing.lg }}>
+                <ThemedText type="h4" style={styles.chartTitle}>
+                  Symptom Overview
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={[styles.chartSubtitle, { color: theme.textSecondary }]}
+                >
+                  Average levels: Mood, Energy, Brain Fog
+                </ThemedText>
+                <Spacer height={Spacing.lg} />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <BarChart
+                    data={overviewData}
+                    width={Dimensions.get("window").width - Spacing.xl * 2 - Spacing.lg * 2}
+                    height={220}
+                    yAxisLabel=""
+                    chartConfig={{
+                      backgroundColor: "transparent",
+                      backgroundGradientFrom: theme.surface,
+                      backgroundGradientTo: theme.surface,
+                      color: () => theme.primary,
+                      labelColor: () => theme.textSecondary,
+                      strokeWidth: 2,
+                    }}
+                    showValuesOnTopOfBars
+                  />
+                </ScrollView>
+              </Card>
+              <Spacer height={Spacing.xl} />
+            </>
+          )}
         </>
       )}
+
+      <Card style={{ padding: Spacing.lg }}>
+        <ThemedText type="h4" style={styles.chartTitle}>
+          Quick Stats
+        </ThemedText>
+        <Spacer height={Spacing.md} />
+        <View style={styles.statsRow}>
+          <View style={[styles.statBox, { backgroundColor: theme.surfaceVariant }]}>
+            <ThemedText type="h3" style={{ color: theme.primary }}>
+              {symptomEntries.length}
+            </ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              Entries logged
+            </ThemedText>
+          </View>
+          <View style={[styles.statBox, { backgroundColor: theme.surfaceVariant }]}>
+            <ThemedText type="h3" style={{ color: theme.success }}>
+              {todos.filter((t) => t.completed).length}
+            </ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              Tasks completed
+            </ThemedText>
+          </View>
+          <View style={[styles.statBox, { backgroundColor: theme.surfaceVariant }]}>
+            <ThemedText type="h3" style={{ color: theme.accent }}>
+              {customTrackerEntries.length}
+            </ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              Custom entries
+            </ThemedText>
+          </View>
+        </View>
+      </Card>
+      <Spacer height={Spacing.xl} />
 
       {insightsEnabled && (
         <>
@@ -182,5 +278,15 @@ const styles = StyleSheet.create({
   disabledText: {
     textAlign: "center",
     opacity: 0.7,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  statBox: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
   },
 });

@@ -116,7 +116,47 @@ export default function TrackScreen() {
 
       <Spacer height={Spacing.xl} />
 
-      {SYMPTOMS.map((symptom, index) => (
+      <View style={[styles.customizeSection, { backgroundColor: theme.surfaceVariant }]}>
+        <View style={styles.customizeSectionHeader}>
+          <ThemedText type="small" style={{ fontWeight: "600" }}>
+            Symptoms to track
+          </ThemedText>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setShowCustomizeModal(true);
+            }}
+            style={[styles.customizeButton, { backgroundColor: theme.primary }]}
+          >
+            <Feather name="edit-2" size={14} color="#FFFFFF" />
+          </Pressable>
+        </View>
+        <View style={styles.selectedSymptomsTags}>
+          {selectedSymptoms.length > 0 ? (
+            selectedSymptoms.map((key) => {
+              const symptom = ALL_SYMPTOMS.find((s) => s.key === key);
+              return symptom ? (
+                <View
+                  key={key}
+                  style={[styles.symptomTag, { backgroundColor: theme.primary + "30" }]}
+                >
+                  <ThemedText type="caption" style={{ color: theme.primary }}>
+                    {symptom.label}
+                  </ThemedText>
+                </View>
+              ) : null;
+            })
+          ) : (
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              Select symptoms to track
+            </ThemedText>
+          )}
+        </View>
+      </View>
+
+      <Spacer height={Spacing.xl} />
+
+      {ALL_SYMPTOMS.filter((s) => selectedSymptoms.includes(s.key)).map((symptom, index, arr) => (
         <View key={symptom.key}>
           <SymptomSlider
             label={symptom.label}
@@ -126,9 +166,39 @@ export default function TrackScreen() {
             lowLabel={symptom.lowLabel}
             highLabel={symptom.highLabel}
           />
-          {index < SYMPTOMS.length - 1 && <Spacer height={Spacing.xl} />}
+          {index < arr.length - 1 && <Spacer height={Spacing.xl} />}
         </View>
       ))}
+
+      <Spacer height={Spacing["3xl"]} />
+
+      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Quick Log</ThemedText>
+      {quickLogActions.slice(0, 4).map((action) => (
+        <Pressable
+          key={action.id}
+          onPress={() => handleQuickLog(action.id)}
+          style={[styles.quickLogButton, { backgroundColor: theme.surfaceVariant }]}
+        >
+          <Feather name="zap" size={16} color={theme.primary} />
+          <ThemedText type="body">{action.name}</ThemedText>
+        </Pressable>
+      ))}
+
+      <Spacer height={Spacing.xl} />
+
+      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Add To-Do</ThemedText>
+      <View style={[styles.todoInput, { backgroundColor: theme.surfaceVariant }]}>
+        <TextInput
+          style={[{ flex: 1, color: theme.text, fontSize: typography.body.fontSize }]}
+          value={newTodoText}
+          onChangeText={setNewTodoText}
+          placeholder="What needs to be done?"
+          placeholderTextColor={theme.textSecondary}
+        />
+        <Pressable onPress={handleAddTodo} disabled={!newTodoText.trim()}>
+          <Feather name="plus-circle" size={20} color={newTodoText.trim() ? theme.primary : theme.textSecondary} />
+        </Pressable>
+      </View>
 
       <Spacer height={Spacing["3xl"]} />
 
@@ -195,5 +265,48 @@ const styles = StyleSheet.create({
   disabledText: {
     textAlign: "center",
     opacity: 0.7,
+  },
+  customizeSection: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  customizeSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
+  customizeButton: {
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.sm,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  selectedSymptomsTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+  },
+  symptomTag: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  quickLogButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  todoInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md,
   },
 });
