@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, Pressable } from "react-native";
+import React, { ReactNode } from "react";
+import { StyleSheet, Pressable, ViewStyle, StyleProp } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,13 +7,15 @@ import Animated, {
   WithSpringConfig,
 } from "react-native-reanimated";
 
-import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 interface CardProps {
-  elevation: number;
+  children?: ReactNode;
+  elevation?: number;
   onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+  disabled?: boolean;
 }
 
 const springConfig: WithSpringConfig = {
@@ -36,13 +38,19 @@ const getBackgroundColorForElevation = (
     case 3:
       return theme.backgroundTertiary;
     default:
-      return theme.backgroundRoot;
+      return theme.surface;
   }
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function Card({ elevation, onPress }: CardProps) {
+export function Card({
+  children,
+  elevation = 1,
+  onPress,
+  style,
+  disabled = false,
+}: CardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
 
@@ -53,45 +61,41 @@ export function Card({ elevation, onPress }: CardProps) {
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, springConfig);
+    if (onPress && !disabled) {
+      scale.value = withSpring(0.98, springConfig);
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, springConfig);
+    if (onPress && !disabled) {
+      scale.value = withSpring(1, springConfig);
+    }
   };
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      disabled={disabled || !onPress}
       style={[
         styles.card,
         {
           backgroundColor: cardBackgroundColor,
+          opacity: disabled ? 0.6 : 1,
         },
+        style,
         animatedStyle,
       ]}
     >
-      <ThemedText type="h4" style={styles.cardTitle}>
-        Card - Elevation {elevation}
-      </ThemedText>
-      <ThemedText type="small" style={styles.cardDescription}>
-        This card has an elevation of {elevation}
-      </ThemedText>
+      {children}
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius["2xl"],
-  },
-  cardTitle: {
-    marginBottom: Spacing.sm,
-  },
-  cardDescription: {
-    opacity: 0.7,
+    padding: Spacing.cardPadding,
+    borderRadius: BorderRadius.lg,
   },
 });

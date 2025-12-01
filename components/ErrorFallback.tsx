@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
+import { Spacing, BorderRadius, Fonts, Colors } from "@/constants/theme";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -58,12 +58,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       ) : null}
 
       <View style={styles.content}>
-        <ThemedText type="h1" style={styles.title}>
-          Something went wrong
+        <View style={[styles.iconCircle, { backgroundColor: theme.error }]}>
+          <Feather name="alert-triangle" size={32} color="#FFFFFF" />
+        </View>
+
+        <ThemedText type="h2" style={styles.title}>
+          SpikeyProfile needs a refresh
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          Please reload the app to continue.
+          Something unexpected happened. Don't worry, your data is safe.
         </ThemedText>
 
         <Pressable
@@ -71,17 +75,18 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: theme.link,
+              backgroundColor: theme.primary,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
+          <Feather name="refresh-cw" size={20} color="#FFFFFF" style={styles.buttonIcon} />
           <ThemedText
             type="body"
-            style={[styles.buttonText, { color: theme.buttonText }]}
+            style={[styles.buttonText, { color: "#FFFFFF" }]}
           >
-            Try Again
+            Restart App
           </ThemedText>
         </Pressable>
       </View>
@@ -159,14 +164,20 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 600,
   },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
   title: {
     textAlign: "center",
-    lineHeight: 40,
   },
   message: {
     textAlign: "center",
     opacity: 0.7,
-    lineHeight: 24,
   },
   topButton: {
     position: "absolute",
@@ -181,18 +192,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   button: {
+    flexDirection: "row",
     paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing["2xl"],
     minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: Spacing.md,
+  },
+  buttonIcon: {
+    marginRight: Spacing.sm,
   },
   buttonText: {
     fontWeight: "600",

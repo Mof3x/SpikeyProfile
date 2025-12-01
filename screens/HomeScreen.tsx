@@ -1,52 +1,106 @@
 import React from "react";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Card } from "@/components/Card";
-import { ScreenFlatList } from "@/components/ScreenFlatList";
+import { StyleSheet, View, Pressable } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+
+import { ScreenScrollView } from "@/components/ScreenScrollView";
+import { ThemedText } from "@/components/ThemedText";
 import Spacer from "@/components/Spacer";
-import { Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import { useModules } from "@/core/ModuleContext";
+import { useData } from "@/core/DataContext";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
-type HomeStackParamList = {
-  Home: undefined;
-  Detail: undefined;
-};
+import { GamificationCard } from "@/modules/Gamification/GamificationCard";
+import { TodaySummaryCard } from "@/modules/SymptomTracker/TodaySummaryCard";
+import { ClipboardPreview } from "@/modules/ClipboardTray/ClipboardPreview";
+import { QuickInsightCard } from "@/modules/PatternInsights/QuickInsightCard";
+import { NFCQuickTap } from "@/modules/NFCModule/NFCQuickTap";
 
-type HomeScreenProps = {
-  navigation: NativeStackNavigationProp<HomeStackParamList, "Home">;
-};
+export default function HomeScreen() {
+  const { theme } = useTheme();
+  const { isModuleEnabled } = useModules();
+  const { userName, symptomEntries } = useData();
 
-interface CardData {
-  id: string;
-  elevation: number;
-}
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
-const CARD_DATA: CardData[] = [
-  { id: "1", elevation: 1 },
-  { id: "2", elevation: 2 },
-  { id: "3", elevation: 3 },
-  { id: "4", elevation: 1 },
-  { id: "5", elevation: 2 },
-  { id: "6", elevation: 3 },
-  { id: "7", elevation: 1 },
-  { id: "8", elevation: 2 },
-  { id: "9", elevation: 3 },
-];
-
-export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const renderItem = ({ item }: { item: CardData }) => (
-    <>
-      <Card
-        elevation={item.elevation}
-        onPress={() => navigation.navigate("Detail")}
-      />
-      <Spacer height={Spacing.lg} />
-    </>
-  );
+  const displayName = userName || "there";
+  const todayEntry = symptomEntries.find((e) => {
+    const today = new Date();
+    return e.timestamp.toDateString() === today.toDateString();
+  });
 
   return (
-    <ScreenFlatList
-      data={CARD_DATA}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-    />
+    <ScreenScrollView>
+      <View style={styles.header}>
+        <ThemedText type="h2" style={styles.greeting}>
+          {getGreeting()}, {displayName}
+        </ThemedText>
+        <ThemedText
+          type="body"
+          style={[styles.subtitle, { color: theme.textSecondary }]}
+        >
+          {todayEntry
+            ? "You've logged your symptoms today"
+            : "How are you feeling today?"}
+        </ThemedText>
+      </View>
+
+      <Spacer height={Spacing.xl} />
+
+      {isModuleEnabled("gamification") && (
+        <>
+          <GamificationCard />
+          <Spacer height={Spacing.lg} />
+        </>
+      )}
+
+      {isModuleEnabled("symptomTracker") && (
+        <>
+          <TodaySummaryCard entry={todayEntry} />
+          <Spacer height={Spacing.lg} />
+        </>
+      )}
+
+      {isModuleEnabled("clipboardTray") && (
+        <>
+          <ClipboardPreview />
+          <Spacer height={Spacing.lg} />
+        </>
+      )}
+
+      {isModuleEnabled("patternInsights") && (
+        <>
+          <QuickInsightCard />
+          <Spacer height={Spacing.lg} />
+        </>
+      )}
+
+      {isModuleEnabled("nfcModule") && (
+        <>
+          <NFCQuickTap />
+          <Spacer height={Spacing.lg} />
+        </>
+      )}
+
+      <Spacer height={Spacing["4xl"]} />
+    </ScreenScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    marginBottom: Spacing.md,
+  },
+  greeting: {
+    marginBottom: Spacing.xs,
+  },
+  subtitle: {
+    opacity: 0.8,
+  },
+});
