@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, Alert } from "react-native";
+import { StyleSheet, View, Pressable, Alert, TextInput, Modal, ScrollView } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
+import { ScreenKeyboardAwareScrollView } from "@/components/ScreenKeyboardAwareScrollView";
 import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { Card } from "@/components/Card";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
 import { useModules } from "@/core/ModuleContext";
@@ -13,7 +16,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 
 import { SymptomSlider } from "@/modules/SymptomTracker/SymptomSlider";
 
-const SYMPTOMS = [
+const ALL_SYMPTOMS = [
   { key: "mood", label: "Mood", icon: "smile", lowLabel: "Low", highLabel: "Great" },
   { key: "energy", label: "Energy", icon: "battery-charging", lowLabel: "Drained", highLabel: "Energized" },
   { key: "brainFog", label: "Brain Fog", icon: "cloud", lowLabel: "Clear", highLabel: "Foggy" },
@@ -21,10 +24,12 @@ const SYMPTOMS = [
   { key: "executiveDysfunction", label: "Executive Function", icon: "list", lowLabel: "Focused", highLabel: "Struggling" },
 ];
 
+const DEFAULT_SELECTED_SYMPTOMS = ["mood", "energy", "brainFog", "sensoryOverload", "executiveDysfunction"];
+
 export default function TrackScreen() {
-  const { theme } = useTheme();
+  const { theme, typography } = useTheme();
   const { isModuleEnabled } = useModules();
-  const { addSymptomEntry } = useData();
+  const { addSymptomEntry, addTodo, addQuickLogAction, logQuickAction, quickLogActions } = useData();
 
   const [values, setValues] = useState({
     mood: 5,
@@ -35,10 +40,23 @@ export default function TrackScreen() {
   });
 
   const [saved, setSaved] = useState(false);
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>(DEFAULT_SELECTED_SYMPTOMS);
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [newTodoText, setNewTodoText] = useState("");
+  const [showQuickLog, setShowQuickLog] = useState(false);
 
   const handleValueChange = (key: string, value: number) => {
     setValues((prev) => ({ ...prev, [key]: value }));
     Haptics.selectionAsync();
+  };
+
+  const toggleSymptom = (symptomKey: string) => {
+    Haptics.selectionAsync();
+    setSelectedSymptoms((prev) =>
+      prev.includes(symptomKey)
+        ? prev.filter((k) => k !== symptomKey)
+        : [...prev, symptomKey]
+    );
   };
 
   const handleSave = () => {
@@ -46,6 +64,18 @@ export default function TrackScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleAddTodo = () => {
+    if (!newTodoText.trim()) return;
+    addTodo({ title: newTodoText.trim(), completed: false });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setNewTodoText("");
+  };
+
+  const handleQuickLog = (actionId: string) => {
+    logQuickAction(actionId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   if (!isModuleEnabled("symptomTracker")) {

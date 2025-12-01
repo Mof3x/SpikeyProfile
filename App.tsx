@@ -35,21 +35,21 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <GestureHandlerRootView style={styles.root}>
-          <KeyboardProvider>
-            <ThemeProvider>
-              <ModuleProvider>
-                <DataProvider>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={styles.root}>
+        <KeyboardProvider>
+          <ThemeProvider>
+            <ModuleProvider>
+              <DataProvider>
+                <ErrorBoundary>
                   <AppContent />
-                </DataProvider>
-              </ModuleProvider>
-            </ThemeProvider>
-          </KeyboardProvider>
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+                </ErrorBoundary>
+              </DataProvider>
+            </ModuleProvider>
+          </ThemeProvider>
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 
