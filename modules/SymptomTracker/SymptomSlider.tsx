@@ -14,6 +14,7 @@ interface SymptomSliderProps {
   onValueChange: (value: number) => void;
   lowLabel: string;
   highLabel: string;
+  compact?: boolean;
 }
 
 export function SymptomSlider({
@@ -23,8 +24,27 @@ export function SymptomSlider({
   onValueChange,
   lowLabel,
   highLabel,
+  compact = false,
 }: SymptomSliderProps) {
   const { theme } = useTheme();
+
+  if (compact) {
+    return (
+      <View style={styles.compactContainer}>
+        <Slider
+          style={styles.slider}
+          minimumValue={1}
+          maximumValue={10}
+          step={1}
+          value={value}
+          onValueChange={onValueChange}
+          minimumTrackTintColor={theme.primary}
+          maximumTrackTintColor={theme.surfaceVariant}
+          thumbTintColor={theme.primary}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
@@ -76,6 +96,9 @@ const styles = StyleSheet.create({
   container: {
     padding: Spacing.cardPadding,
     borderRadius: BorderRadius.lg,
+  },
+  compactContainer: {
+    paddingVertical: Spacing.xs,
   },
   header: {
     flexDirection: "row",

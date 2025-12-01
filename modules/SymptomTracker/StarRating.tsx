@@ -14,6 +14,7 @@ interface StarRatingProps {
   onValueChange: (value: number) => void;
   lowLabel?: string;
   highLabel?: string;
+  compact?: boolean;
 }
 
 export function StarRating({
@@ -23,6 +24,7 @@ export function StarRating({
   onValueChange,
   lowLabel = "Poor",
   highLabel = "Great",
+  compact = false,
 }: StarRatingProps) {
   const { theme } = useTheme();
   const maxStars = 5;
@@ -33,6 +35,22 @@ export function StarRating({
     const newValue = Math.round(((index + 1) / maxStars) * 10);
     onValueChange(newValue);
   };
+
+  if (compact) {
+    return (
+      <View style={styles.compactStarsContainer}>
+        {Array.from({ length: maxStars }).map((_, index) => (
+          <Pressable key={index} onPress={() => handlePress(index)} style={styles.compactStar}>
+            <Feather
+              name={index < numStars ? "star" : "star"}
+              size={24}
+              color={index < numStars ? theme.primary : theme.surfaceVariant}
+            />
+          </Pressable>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
@@ -79,6 +97,15 @@ const styles = StyleSheet.create({
   container: {
     padding: Spacing.cardPadding,
     borderRadius: 12,
+  },
+  compactStarsContainer: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+  },
+  compactStar: {
+    padding: Spacing.xs,
   },
   header: {
     flexDirection: "row",

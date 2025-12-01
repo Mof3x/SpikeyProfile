@@ -14,6 +14,7 @@ interface ColorPickerProps {
   onValueChange: (value: number) => void;
   lowLabel?: string;
   highLabel?: string;
+  compact?: boolean;
 }
 
 const COLOR_SCALE = [
@@ -52,6 +53,7 @@ export function ColorPicker({
   onValueChange,
   lowLabel = "Low",
   highLabel = "High",
+  compact = false,
 }: ColorPickerProps) {
   const { theme } = useTheme();
   const currentColor = VALUE_TO_COLOR[value] || VALUE_TO_COLOR[5];
@@ -61,6 +63,27 @@ export function ColorPicker({
     const newValue = COLOR_TO_VALUE[color];
     onValueChange(newValue);
   };
+
+  if (compact) {
+    return (
+      <View style={styles.compactColorGrid}>
+        {COLOR_SCALE.map((color) => (
+          <Pressable
+            key={color}
+            onPress={() => handleColorPress(color)}
+            style={[
+              styles.compactColorOption,
+              {
+                backgroundColor: color,
+                borderWidth: currentColor === color ? 2 : 0,
+                borderColor: theme.text,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
@@ -109,6 +132,17 @@ const styles = StyleSheet.create({
   container: {
     padding: Spacing.cardPadding,
     borderRadius: BorderRadius.lg,
+  },
+  compactColorGrid: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+  },
+  compactColorOption: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
   },
   header: {
     flexDirection: "row",

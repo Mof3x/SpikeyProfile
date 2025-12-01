@@ -1,18 +1,16 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, Alert, TextInput, Modal, ScrollView } from "react-native";
+import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { ScreenScrollView } from "@/components/ScreenScrollView";
-import { ScreenKeyboardAwareScrollView } from "@/components/ScreenKeyboardAwareScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { Card } from "@/components/Card";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
 import { useModules } from "@/core/ModuleContext";
 import { useData } from "@/core/DataContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useScreenInsets } from "@/hooks/useScreenInsets";
 
 import { SymptomSlider } from "@/modules/SymptomTracker/SymptomSlider";
 import { StarRating } from "@/modules/SymptomTracker/StarRating";
@@ -31,17 +29,23 @@ const ALL_SYMPTOMS = [
   { key: "mood", label: "Mood", icon: "smile", lowLabel: "Low", highLabel: "Great" },
   { key: "energy", label: "Energy", icon: "battery-charging", lowLabel: "Drained", highLabel: "Energized" },
   { key: "brainFog", label: "Brain Fog", icon: "cloud", lowLabel: "Clear", highLabel: "Foggy" },
-  { key: "sensoryOverload", label: "Sensory Overload", icon: "volume-2", lowLabel: "Calm", highLabel: "Overwhelmed" },
-  { key: "executiveDysfunction", label: "Executive Function", icon: "list", lowLabel: "Focused", highLabel: "Struggling" },
+  { key: "sensoryOverload", label: "Sensory", icon: "volume-2", lowLabel: "Calm", highLabel: "Overwhelmed" },
+  { key: "executiveDysfunction", label: "Executive", icon: "list", lowLabel: "Focused", highLabel: "Struggling" },
 ];
 
-const DEFAULT_SELECTED_SYMPTOMS = ["mood", "energy", "brainFog", "sensoryOverload", "executiveDysfunction"];
+interface TabItem {
+  key: string;
+  label: string;
+  icon: string;
+}
 
 export default function TrackScreen() {
   const { theme, typography } = useTheme();
   const { isModuleEnabled } = useModules();
-  const { addSymptomEntry, addTodo, addQuickLogAction, logQuickAction, quickLogActions } = useData();
+  const { addSymptomEntry, addTodo, logQuickAction, quickLogActions, todos, toggleTodo } = useData();
+  const { paddingTop, paddingBottom } = useScreenInsets();
 
+  const [activeTab, setActiveTab] = useState(0);
   const [values, setValues] = useState({
     mood: 5,
     energy: 5,
@@ -49,12 +53,7 @@ export default function TrackScreen() {
     sensoryOverload: 5,
     executiveDysfunction: 5,
   });
-
   const [saved, setSaved] = useState(false);
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>(DEFAULT_SELECTED_SYMPTOMS);
-  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
-  const [showInputTypeModal, setShowInputTypeModal] = useState(false);
-  const [selectedSymptomForInputType, setSelectedSymptomForInputType] = useState<string | null>(null);
   const [inputTypes, setInputTypes] = useState<Record<string, InputType>>({
     mood: "slider",
     energy: "slider",
@@ -63,25 +62,27 @@ export default function TrackScreen() {
     executiveDysfunction: "slider",
   });
   const [newTodoText, setNewTodoText] = useState("");
-  const [showQuickLog, setShowQuickLog] = useState(false);
+  const [showInputTypeModal, setShowInputTypeModal] = useState(false);
+  const [selectedSymptomForInputType, setSelectedSymptomForInputType] = useState<string | null>(null);
+
+  const tabs: TabItem[] = [
+    { key: "symptoms", label: "Symptoms", icon: "activity" },
+    { key: "quicklog", label: "Quick Log", icon: "zap" },
+    { key: "todos", label: "To-Dos", icon: "check-square" },
+  ];
 
   const handleValueChange = (key: string, value: number) => {
     setValues((prev) => ({ ...prev, [key]: value }));
-    Haptics.selectionAsync();
-  };
-
-  const toggleSymptom = (symptomKey: string) => {
-    Haptics.selectionAsync();
-    setSelectedSymptoms((prev) =>
-      prev.includes(symptomKey)
-        ? prev.filter((k) => k !== symptomKey)
-        : [...prev, symptomKey]
-    );
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync();
+    }
   };
 
   const handleSave = () => {
     addSymptomEntry(values);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -89,160 +90,114 @@ export default function TrackScreen() {
   const handleAddTodo = () => {
     if (!newTodoText.trim()) return;
     addTodo(newTodoText.trim());
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     setNewTodoText("");
   };
 
   const handleQuickLog = (actionId: string) => {
     logQuickAction(actionId);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleTabPress = (index: number) => {
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync();
+    }
+    setActiveTab(index);
   };
 
   if (!isModuleEnabled("symptomTracker")) {
     return (
-      <ScreenScrollView contentContainerStyle={styles.disabledContainer}>
+      <View style={[styles.disabledContainer, { paddingTop, paddingBottom }]}>
         <Feather name="activity" size={48} color={theme.textSecondary} />
         <Spacer height={Spacing.lg} />
         <ThemedText type="h3" style={styles.disabledTitle}>
-          Symptom Tracker Disabled
+          Tracking Disabled
         </ThemedText>
         <ThemedText
           type="body"
           style={[styles.disabledText, { color: theme.textSecondary }]}
         >
-          Enable the Symptom Tracker module in Settings to start logging.
+          Enable the Symptom Tracker module in Settings.
         </ThemedText>
-      </ScreenScrollView>
+      </View>
     );
   }
 
-  return (
-    <ScreenScrollView>
-      <View style={styles.timestampContainer}>
-        <Feather name="clock" size={14} color={theme.textSecondary} />
-        <ThemedText
-          type="small"
-          style={[styles.timestamp, { color: theme.textSecondary }]}
-        >
-          {new Date().toLocaleString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          })}
-        </ThemedText>
-      </View>
-
-      <Spacer height={Spacing.xl} />
-
-      <View style={[styles.customizeSection, { backgroundColor: theme.surfaceVariant }]}>
-        <View style={styles.customizeSectionHeader}>
-          <ThemedText type="small" style={{ fontWeight: "600" }}>
-            Symptoms to track
-          </ThemedText>
-          <Pressable
-            onPress={() => {
-              Haptics.selectionAsync();
-              setShowCustomizeModal(true);
-            }}
-            style={[styles.customizeButton, { backgroundColor: theme.primary }]}
-          >
-            <Feather name="edit-2" size={14} color="#FFFFFF" />
-          </Pressable>
-        </View>
-        <View style={styles.selectedSymptomsTags}>
-          {selectedSymptoms.length > 0 ? (
-            selectedSymptoms.map((key) => {
-              const symptom = ALL_SYMPTOMS.find((s) => s.key === key);
-              return symptom ? (
-                <View
-                  key={key}
-                  style={[styles.symptomTag, { backgroundColor: theme.primary + "30" }]}
-                >
-                  <ThemedText type="caption" style={{ color: theme.primary }}>
+  const renderSymptomsPage = () => (
+    <ScrollView
+      style={styles.pageContainer}
+      contentContainerStyle={[styles.pageContent, { paddingBottom: paddingBottom + Spacing.xl }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.symptomsGrid}>
+        {ALL_SYMPTOMS.map((symptom) => {
+          const inputType = inputTypes[symptom.key] || "slider";
+          return (
+            <View key={symptom.key} style={styles.compactSymptomCard}>
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") {
+                    Haptics.selectionAsync();
+                  }
+                  setSelectedSymptomForInputType(symptom.key);
+                  setShowInputTypeModal(true);
+                }}
+                style={[styles.symptomHeader, { backgroundColor: theme.surfaceVariant }]}
+              >
+                <View style={styles.symptomHeaderLeft}>
+                  <Feather name={symptom.icon as any} size={14} color={theme.primary} />
+                  <ThemedText type="small" style={{ fontWeight: "600", marginLeft: Spacing.xs }}>
                     {symptom.label}
                   </ThemedText>
                 </View>
-              ) : null;
-            })
-          ) : (
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Select symptoms to track
-            </ThemedText>
-          )}
-        </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  {values[symptom.key as keyof typeof values]}/10
+                </ThemedText>
+              </Pressable>
+              <View style={styles.compactInputContainer}>
+                {inputType === "slider" ? (
+                  <SymptomSlider
+                    label=""
+                    icon={symptom.icon as any}
+                    value={values[symptom.key as keyof typeof values]}
+                    onValueChange={(v) => handleValueChange(symptom.key, v)}
+                    lowLabel={symptom.lowLabel}
+                    highLabel={symptom.highLabel}
+                    compact
+                  />
+                ) : inputType === "stars" ? (
+                  <StarRating
+                    label=""
+                    icon={symptom.icon as any}
+                    value={values[symptom.key as keyof typeof values]}
+                    onValueChange={(v) => handleValueChange(symptom.key, v)}
+                    lowLabel={symptom.lowLabel}
+                    highLabel={symptom.highLabel}
+                    compact
+                  />
+                ) : (
+                  <ColorPicker
+                    label=""
+                    icon={symptom.icon as any}
+                    value={values[symptom.key as keyof typeof values]}
+                    onValueChange={(v) => handleValueChange(symptom.key, v)}
+                    lowLabel={symptom.lowLabel}
+                    highLabel={symptom.highLabel}
+                    compact
+                  />
+                )}
+              </View>
+            </View>
+          );
+        })}
       </View>
 
-      <Spacer height={Spacing.xl} />
-
-      {ALL_SYMPTOMS.filter((s) => selectedSymptoms.includes(s.key)).map((symptom, index, arr) => {
-        const inputType = inputTypes[symptom.key] || "slider";
-        const InputComponent = 
-          inputType === "stars" ? StarRating : 
-          inputType === "color" ? ColorPicker : 
-          SymptomSlider;
-
-        return (
-          <View key={symptom.key}>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                setSelectedSymptomForInputType(symptom.key);
-                setShowInputTypeModal(true);
-              }}
-              style={[styles.inputTypeIndicator, { backgroundColor: theme.surfaceVariant }]}
-            >
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                {INPUT_LABELS[inputType]} mode
-              </ThemedText>
-              <Feather name="edit-2" size={12} color={theme.textSecondary} />
-            </Pressable>
-            <Spacer height={Spacing.sm} />
-            <InputComponent
-              label={symptom.label}
-              icon={symptom.icon as any}
-              value={values[symptom.key as keyof typeof values]}
-              onValueChange={(v) => handleValueChange(symptom.key, v)}
-              lowLabel={symptom.lowLabel}
-              highLabel={symptom.highLabel}
-            />
-            {index < arr.length - 1 && <Spacer height={Spacing.xl} />}
-          </View>
-        );
-      })}
-
-      <Spacer height={Spacing["3xl"]} />
-
-      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Quick Log</ThemedText>
-      {quickLogActions.slice(0, 4).map((action) => (
-        <Pressable
-          key={action.id}
-          onPress={() => handleQuickLog(action.id)}
-          style={[styles.quickLogButton, { backgroundColor: theme.surfaceVariant }]}
-        >
-          <Feather name="zap" size={16} color={theme.primary} />
-          <ThemedText type="body">{action.name}</ThemedText>
-        </Pressable>
-      ))}
-
-      <Spacer height={Spacing.xl} />
-
-      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Add To-Do</ThemedText>
-      <View style={[styles.todoInput, { backgroundColor: theme.surfaceVariant }]}>
-        <TextInput
-          style={[{ flex: 1, color: theme.text, fontSize: typography.body.fontSize }]}
-          value={newTodoText}
-          onChangeText={setNewTodoText}
-          placeholder="What needs to be done?"
-          placeholderTextColor={theme.textSecondary}
-        />
-        <Pressable onPress={handleAddTodo} disabled={!newTodoText.trim()}>
-          <Feather name="plus-circle" size={20} color={newTodoText.trim() ? theme.primary : theme.textSecondary} />
-        </Pressable>
-      </View>
-
-      <Spacer height={Spacing["3xl"]} />
+      <Spacer height={Spacing.lg} />
 
       <Pressable
         onPress={handleSave}
@@ -254,18 +209,205 @@ export default function TrackScreen() {
           },
         ]}
       >
-        <Feather
-          name={saved ? "check" : "save"}
-          size={20}
-          color="#FFFFFF"
-          style={styles.saveIcon}
-        />
-        <ThemedText type="body" style={styles.saveText}>
+        <Feather name={saved ? "check" : "save"} size={18} color={theme.background} />
+        <ThemedText type="body" style={{ color: theme.background, fontWeight: "600", marginLeft: Spacing.sm }}>
           {saved ? "Saved!" : "Save Entry"}
         </ThemedText>
       </Pressable>
+    </ScrollView>
+  );
 
-      <Spacer height={Spacing["5xl"]} />
+  const renderQuickLogPage = () => (
+    <ScrollView
+      style={styles.pageContainer}
+      contentContainerStyle={[styles.pageContent, { paddingBottom: paddingBottom + Spacing.xl }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+        Tap to log instantly
+      </ThemedText>
+
+      <View style={styles.quickLogGrid}>
+        {quickLogActions.filter((a) => a.enabled).map((action) => (
+          <Pressable
+            key={action.id}
+            onPress={() => handleQuickLog(action.id)}
+            style={({ pressed }) => [
+              styles.quickLogChip,
+              {
+                backgroundColor: pressed ? theme.primary : theme.surfaceVariant,
+              },
+            ]}
+          >
+            <Feather
+              name={action.icon as any || "zap"}
+              size={20}
+              color={theme.primary}
+            />
+            <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: "center" }} numberOfLines={2}>
+              {action.name}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
+
+      {quickLogActions.filter((a) => a.enabled).length === 0 ? (
+        <View style={[styles.emptyState, { backgroundColor: theme.surfaceVariant }]}>
+          <Feather name="plus-circle" size={32} color={theme.textSecondary} />
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: "center" }}>
+            No quick log actions yet. Add some in Settings.
+          </ThemedText>
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+
+  const renderTodosPage = () => {
+    const incompleteTodos = todos.filter((t) => !t.completed).slice(0, 8);
+    const completedTodos = todos.filter((t) => t.completed).slice(0, 3);
+
+    return (
+      <ScrollView
+        style={styles.pageContainer}
+        contentContainerStyle={[styles.pageContent, { paddingBottom: paddingBottom + Spacing.xl }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.todoInputRow, { backgroundColor: theme.surfaceVariant }]}>
+          <TextInput
+            style={[styles.todoTextInput, { color: theme.text, fontSize: typography.body.fontSize }]}
+            value={newTodoText}
+            onChangeText={setNewTodoText}
+            placeholder="Add a task..."
+            placeholderTextColor={theme.textSecondary}
+            onSubmitEditing={handleAddTodo}
+            returnKeyType="done"
+          />
+          <Pressable
+            onPress={handleAddTodo}
+            disabled={!newTodoText.trim()}
+            style={[styles.addTodoButton, { backgroundColor: newTodoText.trim() ? theme.primary : theme.divider }]}
+          >
+            <Feather name="plus" size={18} color={newTodoText.trim() ? theme.background : theme.textSecondary} />
+          </Pressable>
+        </View>
+
+        <Spacer height={Spacing.lg} />
+
+        {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.surfaceVariant }]}>
+            <Feather name="check-circle" size={32} color={theme.textSecondary} />
+            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: "center" }}>
+              No tasks yet. Add one above!
+            </ThemedText>
+          </View>
+        ) : null}
+
+        {incompleteTodos.map((todo) => (
+          <Pressable
+            key={todo.id}
+            onPress={() => {
+              if (Platform.OS !== "web") {
+                Haptics.selectionAsync();
+              }
+              toggleTodo(todo.id);
+            }}
+            style={[styles.todoItem, { backgroundColor: theme.surfaceVariant }]}
+          >
+            <View style={[styles.todoCheckbox, { borderColor: theme.primary }]} />
+            <ThemedText type="body" style={{ flex: 1 }} numberOfLines={1}>
+              {todo.text}
+            </ThemedText>
+          </Pressable>
+        ))}
+
+        {completedTodos.length > 0 ? (
+          <>
+            <Spacer height={Spacing.md} />
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+              Completed
+            </ThemedText>
+            {completedTodos.map((todo) => (
+              <Pressable
+                key={todo.id}
+                onPress={() => {
+                  if (Platform.OS !== "web") {
+                    Haptics.selectionAsync();
+                  }
+                  toggleTodo(todo.id);
+                }}
+                style={[styles.todoItem, { backgroundColor: theme.surfaceVariant, opacity: 0.6 }]}
+              >
+                <View style={[styles.todoCheckbox, { borderColor: theme.success, backgroundColor: theme.success }]}>
+                  <Feather name="check" size={10} color={theme.background} />
+                </View>
+                <ThemedText
+                  type="body"
+                  style={{ flex: 1, textDecorationLine: "line-through", color: theme.textSecondary }}
+                  numberOfLines={1}
+                >
+                  {todo.text}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </>
+        ) : null}
+      </ScrollView>
+    );
+  };
+
+  return (
+    <ThemedView style={[styles.container, { paddingTop }]}>
+      <View style={styles.header}>
+        <View style={styles.timestampRow}>
+          <Feather name="clock" size={12} color={theme.textSecondary} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
+            {new Date().toLocaleString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </ThemedText>
+        </View>
+
+        <View style={styles.tabBar}>
+          {tabs.map((tab, index) => (
+            <Pressable
+              key={tab.key}
+              onPress={() => handleTabPress(index)}
+              style={[
+                styles.tab,
+                {
+                  backgroundColor: activeTab === index ? theme.primary : theme.surfaceVariant,
+                },
+              ]}
+            >
+              <Feather
+                name={tab.icon as any}
+                size={16}
+                color={activeTab === index ? theme.background : theme.textSecondary}
+              />
+              <ThemedText
+                type="caption"
+                style={{
+                  color: activeTab === index ? theme.background : theme.textSecondary,
+                  fontWeight: "600",
+                  marginLeft: Spacing.xs,
+                }}
+              >
+                {tab.label}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.pageWrapper}>
+        {activeTab === 0 ? renderSymptomsPage() : null}
+        {activeTab === 1 ? renderQuickLogPage() : null}
+        {activeTab === 2 ? renderTodosPage() : null}
+      </View>
 
       <Modal
         visible={showInputTypeModal}
@@ -276,104 +418,169 @@ export default function TrackScreen() {
         <View style={styles.modalOverlay}>
           <ThemedView style={[styles.modalContent, { backgroundColor: theme.surface }]}>
             <View style={styles.modalHeader}>
-              <ThemedText type="h3">Choose logging style</ThemedText>
+              <ThemedText type="h4">Input Style</ThemedText>
               <Pressable onPress={() => setShowInputTypeModal(false)}>
                 <Feather name="x" size={24} color={theme.text} />
               </Pressable>
             </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {INPUT_TYPES.map((type) => (
-                <Pressable
-                  key={type}
-                  onPress={() => {
-                    if (selectedSymptomForInputType) {
+            {INPUT_TYPES.map((type) => (
+              <Pressable
+                key={type}
+                onPress={() => {
+                  if (selectedSymptomForInputType) {
+                    if (Platform.OS !== "web") {
                       Haptics.selectionAsync();
-                      setInputTypes((prev) => ({
-                        ...prev,
-                        [selectedSymptomForInputType]: type,
-                      }));
-                      setShowInputTypeModal(false);
                     }
-                  }}
-                  style={[
-                    styles.typeOption,
-                    {
-                      backgroundColor:
-                        inputTypes[selectedSymptomForInputType || ""] === type
-                          ? theme.primary + "30"
-                          : theme.surfaceVariant,
-                      borderColor:
-                        inputTypes[selectedSymptomForInputType || ""] === type
-                          ? theme.primary
-                          : "transparent",
-                      borderWidth: 2,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name={
-                      type === "slider"
-                        ? "sliders"
-                        : type === "stars"
-                          ? "star"
-                          : "droplet"
-                    }
-                    size={24}
-                    color={
+                    setInputTypes((prev) => ({
+                      ...prev,
+                      [selectedSymptomForInputType]: type,
+                    }));
+                    setShowInputTypeModal(false);
+                  }
+                }}
+                style={[
+                  styles.typeOption,
+                  {
+                    backgroundColor:
                       inputTypes[selectedSymptomForInputType || ""] === type
-                        ? theme.primary
-                        : theme.textSecondary
-                    }
-                  />
-                  <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                    <ThemedText type="body" style={{ fontWeight: "600" }}>
-                      {INPUT_LABELS[type]}
-                    </ThemedText>
-                    <ThemedText
-                      type="small"
-                      style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
-                    >
-                      {type === "slider"
-                        ? "Move a slider from low to high"
-                        : type === "stars"
-                          ? "Rate out of 5 stars"
-                          : "Pick a color from the spectrum"}
-                    </ThemedText>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
+                        ? theme.primary + "30"
+                        : theme.surfaceVariant,
+                  },
+                ]}
+              >
+                <Feather
+                  name={type === "slider" ? "sliders" : type === "stars" ? "star" : "droplet"}
+                  size={20}
+                  color={inputTypes[selectedSymptomForInputType || ""] === type ? theme.primary : theme.textSecondary}
+                />
+                <ThemedText type="body" style={{ marginLeft: Spacing.md, fontWeight: "500" }}>
+                  {INPUT_LABELS[type]}
+                </ThemedText>
+              </Pressable>
+            ))}
           </ThemedView>
         </View>
       </Modal>
-    </ScreenScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  timestampContainer: {
+  container: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+  },
+  timestampRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  tabBar: {
+    flexDirection: "row",
     gap: Spacing.sm,
   },
-  timestamp: {
-    opacity: 0.8,
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  pageWrapper: {
+    flex: 1,
+  },
+  pageContainer: {
+    flex: 1,
+  },
+  pageContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  symptomsGrid: {
+    gap: Spacing.md,
+  },
+  compactSymptomCard: {
+    marginBottom: Spacing.xs,
+  },
+  symptomHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  symptomHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  compactInputContainer: {
+    marginTop: Spacing.xs,
   },
   saveButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.lg,
+    height: 48,
+    borderRadius: BorderRadius.md,
+  },
+  quickLogGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
-  saveIcon: {
-    marginRight: Spacing.xs,
+  quickLogChip: {
+    width: "30%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
   },
-  saveText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing["3xl"],
+    borderRadius: BorderRadius.lg,
+  },
+  todoInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: BorderRadius.md,
+    paddingLeft: Spacing.md,
+    paddingRight: Spacing.xs,
+    paddingVertical: Spacing.xs,
+  },
+  todoTextInput: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+  },
+  addTodoButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  todoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+  },
+  todoCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   disabledContainer: {
     flex: 1,
@@ -389,58 +596,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     opacity: 0.7,
   },
-  customizeSection: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-  },
-  customizeSectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-  },
-  customizeButton: {
-    width: 24,
-    height: 24,
-    borderRadius: BorderRadius.sm,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  selectedSymptomsTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.xs,
-  },
-  symptomTag: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-  },
-  quickLogButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  todoInput: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.md,
-  },
-  inputTypeIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
-    gap: Spacing.sm,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -450,7 +605,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
     padding: Spacing.xl,
-    maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
@@ -463,6 +617,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
 });

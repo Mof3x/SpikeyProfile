@@ -20,7 +20,7 @@ export default function TrackStackNavigator() {
         name="Track"
         component={TrackScreen}
         options={{
-          title: "Track Symptoms",
+          title: "Track",
         }}
       />
     </Stack.Navigator>
