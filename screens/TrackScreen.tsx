@@ -15,6 +15,17 @@ import { useData } from "@/core/DataContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 import { SymptomSlider } from "@/modules/SymptomTracker/SymptomSlider";
+import { StarRating } from "@/modules/SymptomTracker/StarRating";
+import { ColorPicker } from "@/modules/SymptomTracker/ColorPicker";
+
+type InputType = "slider" | "stars" | "color";
+
+const INPUT_TYPES: InputType[] = ["slider", "stars", "color"];
+const INPUT_LABELS: Record<InputType, string> = {
+  slider: "Slider",
+  stars: "Stars",
+  color: "Color",
+};
 
 const ALL_SYMPTOMS = [
   { key: "mood", label: "Mood", icon: "smile", lowLabel: "Low", highLabel: "Great" },
@@ -42,6 +53,15 @@ export default function TrackScreen() {
   const [saved, setSaved] = useState(false);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>(DEFAULT_SELECTED_SYMPTOMS);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [showInputTypeModal, setShowInputTypeModal] = useState(false);
+  const [selectedSymptomForInputType, setSelectedSymptomForInputType] = useState<string | null>(null);
+  const [inputTypes, setInputTypes] = useState<Record<string, InputType>>({
+    mood: "slider",
+    energy: "slider",
+    brainFog: "slider",
+    sensoryOverload: "slider",
+    executiveDysfunction: "slider",
+  });
   const [newTodoText, setNewTodoText] = useState("");
   const [showQuickLog, setShowQuickLog] = useState(false);
 
@@ -156,19 +176,41 @@ export default function TrackScreen() {
 
       <Spacer height={Spacing.xl} />
 
-      {ALL_SYMPTOMS.filter((s) => selectedSymptoms.includes(s.key)).map((symptom, index, arr) => (
-        <View key={symptom.key}>
-          <SymptomSlider
-            label={symptom.label}
-            icon={symptom.icon as any}
-            value={values[symptom.key as keyof typeof values]}
-            onValueChange={(v) => handleValueChange(symptom.key, v)}
-            lowLabel={symptom.lowLabel}
-            highLabel={symptom.highLabel}
-          />
-          {index < arr.length - 1 && <Spacer height={Spacing.xl} />}
-        </View>
-      ))}
+      {ALL_SYMPTOMS.filter((s) => selectedSymptoms.includes(s.key)).map((symptom, index, arr) => {
+        const inputType = inputTypes[symptom.key] || "slider";
+        const InputComponent = 
+          inputType === "stars" ? StarRating : 
+          inputType === "color" ? ColorPicker : 
+          SymptomSlider;
+
+        return (
+          <View key={symptom.key}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setSelectedSymptomForInputType(symptom.key);
+                setShowInputTypeModal(true);
+              }}
+              style={[styles.inputTypeIndicator, { backgroundColor: theme.surfaceVariant }]}
+            >
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                {INPUT_LABELS[inputType]} mode
+              </ThemedText>
+              <Feather name="edit-2" size={12} color={theme.textSecondary} />
+            </Pressable>
+            <Spacer height={Spacing.sm} />
+            <InputComponent
+              label={symptom.label}
+              icon={symptom.icon as any}
+              value={values[symptom.key as keyof typeof values]}
+              onValueChange={(v) => handleValueChange(symptom.key, v)}
+              lowLabel={symptom.lowLabel}
+              highLabel={symptom.highLabel}
+            />
+            {index < arr.length - 1 && <Spacer height={Spacing.xl} />}
+          </View>
+        );
+      })}
 
       <Spacer height={Spacing["3xl"]} />
 
@@ -224,6 +266,87 @@ export default function TrackScreen() {
       </Pressable>
 
       <Spacer height={Spacing["5xl"]} />
+
+      <Modal
+        visible={showInputTypeModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowInputTypeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h3">Choose logging style</ThemedText>
+              <Pressable onPress={() => setShowInputTypeModal(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {INPUT_TYPES.map((type) => (
+                <Pressable
+                  key={type}
+                  onPress={() => {
+                    if (selectedSymptomForInputType) {
+                      Haptics.selectionAsync();
+                      setInputTypes((prev) => ({
+                        ...prev,
+                        [selectedSymptomForInputType]: type,
+                      }));
+                      setShowInputTypeModal(false);
+                    }
+                  }}
+                  style={[
+                    styles.typeOption,
+                    {
+                      backgroundColor:
+                        inputTypes[selectedSymptomForInputType || ""] === type
+                          ? theme.primary + "30"
+                          : theme.surfaceVariant,
+                      borderColor:
+                        inputTypes[selectedSymptomForInputType || ""] === type
+                          ? theme.primary
+                          : "transparent",
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={
+                      type === "slider"
+                        ? "sliders"
+                        : type === "stars"
+                          ? "star"
+                          : "palette"
+                    }
+                    size={24}
+                    color={
+                      inputTypes[selectedSymptomForInputType || ""] === type
+                        ? theme.primary
+                        : theme.textSecondary
+                    }
+                  />
+                  <View style={{ flex: 1, marginLeft: Spacing.md }}>
+                    <ThemedText type="body" style={{ fontWeight: "600" }}>
+                      {INPUT_LABELS[type]}
+                    </ThemedText>
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
+                    >
+                      {type === "slider"
+                        ? "Move a slider from low to high"
+                        : type === "stars"
+                          ? "Rate out of 5 stars"
+                          : "Pick a color from the spectrum"}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </ThemedView>
+        </View>
+      </Modal>
     </ScreenScrollView>
   );
 }
@@ -308,5 +431,38 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     gap: Spacing.md,
+  },
+  inputTypeIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  typeOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
   },
 });
