@@ -23,6 +23,8 @@ import { NFCQuickLogCard } from "@/modules/NFCModule/NFCQuickLog";
 import { PomodoroTimerCard } from "@/modules/Pomodoro/PomodoroTimer";
 import { EmergencyButtonCard } from "@/modules/Emergency/EmergencyButton";
 import { AutomatedAlarms } from "@/modules/Alarms/AutomatedAlarms";
+import { CountdownTimerCard } from "@/modules/Timers/CountdownTimerCard";
+import { CountUpTimerCard } from "@/modules/Timers/CountUpTimerCard";
 
 interface WidgetConfig {
   id: WidgetId;
@@ -59,7 +61,7 @@ function WidgetReorderModal({
     patternInsights: { name: "Pattern Insights", icon: "bar-chart-2" },
     emergency: { name: "Emergency", icon: "alert-circle" },
     countdown: { name: "Countdown Timer", icon: "clock" },
-    countup: { name: "Count Up Timer", icon: "clock" },
+    countup: { name: "Time Since...", icon: "activity" },
   };
 
   const moveWidget = (index: number, direction: "up" | "down") => {
@@ -197,9 +199,23 @@ export default function HomeScreen() {
   });
 
   const isWidgetModuleEnabled = useCallback((widgetId: WidgetId): boolean => {
-    const moduleIds = ["gamification", "symptomTracker", "todoList", "calendar", "nfcModule", "pomodoro", "alarms", "clipboardTray", "patternInsights", "emergency"];
-    if (!moduleIds.includes(widgetId)) return false;
-    return isModuleEnabled(widgetId as any);
+    const widgetToModuleMap: Record<string, string> = {
+      gamification: "gamification",
+      symptomTracker: "symptomTracker",
+      todoList: "todoList",
+      calendar: "calendar",
+      nfcModule: "nfcModule",
+      pomodoro: "pomodoro",
+      alarms: "alarms",
+      clipboardTray: "clipboardTray",
+      patternInsights: "patternInsights",
+      emergency: "emergency",
+      countdown: "countdownTimer",
+      countup: "countUpTimer",
+    };
+    const moduleId = widgetToModuleMap[widgetId];
+    if (!moduleId) return false;
+    return isModuleEnabled(moduleId as any);
   }, [isModuleEnabled]);
 
   const enabledModulesSet = new Set(
@@ -224,6 +240,10 @@ export default function HomeScreen() {
         return <PomodoroTimerCard />;
       case "alarms":
         return <AutomatedAlarms />;
+      case "countdown":
+        return <CountdownTimerCard />;
+      case "countup":
+        return <CountUpTimerCard />;
       case "clipboardTray":
         return <ClipboardPreview />;
       case "patternInsights":

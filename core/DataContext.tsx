@@ -97,6 +97,28 @@ export interface LowSensorySettings {
   muteNotificationSounds: boolean;
 }
 
+export interface CountdownTimer {
+  id: string;
+  name: string;
+  targetDate: Date;
+  category: "appointment" | "medication" | "deadline" | "event" | "custom";
+  icon: string;
+  color: string;
+  enabled: boolean;
+  notifyBefore?: number; // minutes before to notify
+}
+
+export interface CountUpTimer {
+  id: string;
+  name: string;
+  startTime: Date;
+  category: "medication" | "meal" | "task" | "custom";
+  icon: string;
+  color: string;
+  enabled: boolean;
+  targetHours?: number; // optional target duration
+}
+
 export interface AlarmSchedule {
   id: string;
   name: string;
@@ -151,6 +173,8 @@ export const DEFAULT_WIDGET_ORDER: WidgetId[] = [
   "nfcModule",
   "pomodoro",
   "alarms",
+  "countdown",
+  "countup",
   "clipboardTray",
   "patternInsights",
   "emergency",
@@ -210,6 +234,15 @@ interface DataContextType {
   setWidgetOrder: (order: WidgetId[]) => void;
   lowSensorySettings: LowSensorySettings;
   setLowSensorySettings: (settings: LowSensorySettings) => void;
+  countdownTimers: CountdownTimer[];
+  addCountdownTimer: (timer: Omit<CountdownTimer, "id">) => void;
+  updateCountdownTimer: (id: string, timer: Partial<CountdownTimer>) => void;
+  removeCountdownTimer: (id: string) => void;
+  countUpTimers: CountUpTimer[];
+  addCountUpTimer: (timer: Omit<CountUpTimer, "id">) => void;
+  updateCountUpTimer: (id: string, timer: Partial<CountUpTimer>) => void;
+  removeCountUpTimer: (id: string) => void;
+  resetCountUpTimer: (id: string) => void;
   isLoading: boolean;
 }
 
@@ -233,6 +266,8 @@ const STORAGE_KEYS = {
   medicalInfo: "@spikeyprofile/medicalInfo",
   crisisScripts: "@spikeyprofile/crisisScripts",
   lowSensorySettings: "@spikeyprofile/lowSensorySettings",
+  countdownTimers: "@spikeyprofile/countdownTimers",
+  countUpTimers: "@spikeyprofile/countUpTimers",
 };
 
 const DEFAULT_LOW_SENSORY_SETTINGS: LowSensorySettings = {
@@ -415,6 +450,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [crisisScripts, setCrisisScripts] = useState<CrisisScript[]>(DEFAULT_CRISIS_SCRIPTS);
   const [lowSensorySettings, setLowSensorySettingsState] = useState<LowSensorySettings>(DEFAULT_LOW_SENSORY_SETTINGS);
   const [alarmSchedules, setAlarmSchedules] = useState<AlarmSchedule[]>([]);
+  const [countdownTimers, setCountdownTimers] = useState<CountdownTimer[]>([]);
+  const [countUpTimers, setCountUpTimers] = useState<CountUpTimer[]>([]);
   const [userStats, setUserStats] = useState<UserStats>({
     ...INITIAL_STATS,
     totalEntries: SAMPLE_ENTRIES.length,
@@ -451,6 +488,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedMedicalInfo,
         storedCrisisScripts,
         storedLowSensory,
+        storedCountdownTimers,
+        storedCountUpTimers,
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.symptomEntries),
         AsyncStorage.getItem(STORAGE_KEYS.clipboardItems),
@@ -469,6 +508,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.medicalInfo),
         AsyncStorage.getItem(STORAGE_KEYS.crisisScripts),
         AsyncStorage.getItem(STORAGE_KEYS.lowSensorySettings),
+        AsyncStorage.getItem(STORAGE_KEYS.countdownTimers),
+        AsyncStorage.getItem(STORAGE_KEYS.countUpTimers),
       ]);
 
       if (storedSymptoms) setSymptomEntries(deserializeData(storedSymptoms));
@@ -522,6 +563,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setLowSensorySettingsState({ ...DEFAULT_LOW_SENSORY_SETTINGS, ...parsed });
         } catch {
           setLowSensorySettingsState(DEFAULT_LOW_SENSORY_SETTINGS);
+        }
+      }
+      
+      if (storedCountdownTimers) {
+        try {
+          setCountdownTimers(deserializeData(storedCountdownTimers));
+        } catch {
+          setCountdownTimers([]);
+        }
+      }
+      
+      if (storedCountUpTimers) {
+        try {
+          setCountUpTimers(deserializeData(storedCountUpTimers));
+        } catch {
+          setCountUpTimers([]);
         }
       }
     } catch (error) {
@@ -873,6 +930,64 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, [saveToStorage]);
 
+  const addCountdownTimer = useCallback((timer: Omit<CountdownTimer, "id">) => {
+    setCountdownTimers((prev) => {
+      const newTimer: CountdownTimer = { ...timer, id: Date.now().toString() };
+      const updated = [...prev, newTimer];
+      saveToStorage(STORAGE_KEYS.countdownTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateCountdownTimer = useCallback((id: string, timer: Partial<CountdownTimer>) => {
+    setCountdownTimers((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, ...timer } : t));
+      saveToStorage(STORAGE_KEYS.countdownTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeCountdownTimer = useCallback((id: string) => {
+    setCountdownTimers((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      saveToStorage(STORAGE_KEYS.countdownTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const addCountUpTimer = useCallback((timer: Omit<CountUpTimer, "id">) => {
+    setCountUpTimers((prev) => {
+      const newTimer: CountUpTimer = { ...timer, id: Date.now().toString() };
+      const updated = [...prev, newTimer];
+      saveToStorage(STORAGE_KEYS.countUpTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateCountUpTimer = useCallback((id: string, timer: Partial<CountUpTimer>) => {
+    setCountUpTimers((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, ...timer } : t));
+      saveToStorage(STORAGE_KEYS.countUpTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeCountUpTimer = useCallback((id: string) => {
+    setCountUpTimers((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      saveToStorage(STORAGE_KEYS.countUpTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const resetCountUpTimer = useCallback((id: string) => {
+    setCountUpTimers((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, startTime: new Date() } : t));
+      saveToStorage(STORAGE_KEYS.countUpTimers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
   return (
     <DataContext.Provider
       value={{
@@ -929,6 +1044,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setWidgetOrder,
         lowSensorySettings,
         setLowSensorySettings,
+        countdownTimers,
+        addCountdownTimer,
+        updateCountdownTimer,
+        removeCountdownTimer,
+        countUpTimers,
+        addCountUpTimer,
+        updateCountUpTimer,
+        removeCountUpTimer,
+        resetCountUpTimer,
         isLoading,
       }}
     >

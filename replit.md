@@ -47,7 +47,9 @@ SpikeyProfile is a modular React Native Expo app designed for neurodivergent use
 │   ├── TodoList/              # Task management widget
 │   ├── Calendar/              # Upcoming events widget + full calendar
 │   ├── Pomodoro/              # Focus timer with customizable backgrounds
-│   └── Emergency/             # Emergency button with GPS/battery/SMS
+│   ├── Emergency/             # Emergency button with GPS/battery/SMS
+│   ├── Alarms/                # Automated repeating alarms
+│   └── Timers/                # Countdown and CountUp timer modules
 ├── screens/
 │   ├── HomeScreen.tsx         # Dashboard with widgets
 │   ├── TrackScreen.tsx        # Symptom logging
@@ -60,7 +62,7 @@ SpikeyProfile is a modular React Native Expo app designed for neurodivergent use
 └── hooks/useTheme.tsx         # Theme hook with typography scaling
 ```
 
-## Available Modules (11 Total)
+## Available Modules (14 Total)
 
 1. **Symptom Tracker** - Log mood, energy, brain fog, sensory overload, executive dysfunction
 2. **Clipboard Tray** - Multi-item holder for tasks and notes
@@ -71,8 +73,11 @@ SpikeyProfile is a modular React Native Expo app designed for neurodivergent use
 7. **To-Do List** - Simple task management with completion tracking
 8. **Calendar** - Monthly view with event types, filters, and upcoming events widget
 9. **Pomodoro Timer** - Focus timer with work/break cycles, unlockable backgrounds (via XP)
-10. **Emergency Button** - Alert contacts with location and battery info via SMS
+10. **Emergency Button** - Alert contacts with location and battery info via SMS, medical info cards, crisis scripts
 11. **Custom Trackers** - Create custom trackable items (slider, toggle, counter, text, color)
+12. **Automated Alarms** - Set repeating reminders at custom intervals with staggered notifications
+13. **Countdown Timer** - Count down to important events (appointments, deadlines, etc.) with categories
+14. **Time Since...** - Track elapsed time since last medication, meal, or custom activity with optional warnings
 
 ## Theme System
 
@@ -89,6 +94,14 @@ SpikeyProfile is a modular React Native Expo app designed for neurodivergent use
 ## Recent Changes
 
 ### December 2024
+- Added Countdown Timer module - count down to appointments, deadlines, events with categories
+- Added Time Since... (CountUp Timer) module - track elapsed time since medications, meals, activities with optional warning thresholds
+- Added Automated Alarms module with staggered reminders (3+ per task)
+- Enhanced Emergency Button with Medical Info Cards and Crisis Scripts
+- Added Low Sensory Mode with granular controls (each feature optional) and master toggle
+- Calendar tab with persistent filters for time-bound items
+- Home screen widget order fully customizable via drag-and-drop
+- Emergency modals with keyboard-aware scrolling
 - Added 5 new modules: To-Do List, Calendar, Pomodoro Timer, Emergency Button, Custom Trackers
 - Implemented 4-theme system with dark/light mode variants
 - Added font size scaling (S/M/L/XL)
@@ -126,7 +139,9 @@ To add a new module:
 All data persisted locally using AsyncStorage with keys prefixed `@spikeyprofile/`:
 - symptomEntries, todos, calendarEvents, customTrackers
 - quickLogActions, quickLogEntries, emergencyContacts
-- userStats, userName, modules
+- userStats, userName, modules, widgetOrder
+- alarmSchedules, countdownTimers, countUpTimers
+- medicalInfo, crisisScripts, lowSensorySettings
 
 ## Next Steps (Future Development)
 

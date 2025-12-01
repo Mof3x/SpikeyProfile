@@ -13,7 +13,9 @@ export type ModuleId =
   | "pomodoro"
   | "emergency"
   | "customTrackers"
-  | "alarms";
+  | "alarms"
+  | "countdownTimer"
+  | "countUpTimer";
 
 export interface ModuleConfig {
   id: ModuleId;
@@ -106,6 +108,20 @@ const DEFAULT_MODULES: ModuleConfig[] = [
     name: "Automated Alarms",
     description: "Set repeating alarms at intervals",
     icon: "bell",
+    enabled: true,
+  },
+  {
+    id: "countdownTimer",
+    name: "Countdown Timer",
+    description: "Count down to important events and appointments",
+    icon: "clock",
+    enabled: true,
+  },
+  {
+    id: "countUpTimer",
+    name: "Time Since...",
+    description: "Track time since last medication, meal, or activity",
+    icon: "activity",
     enabled: true,
   },
 ];
