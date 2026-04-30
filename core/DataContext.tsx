@@ -151,6 +151,38 @@ export interface PatternInsight {
   type: "positive" | "neutral" | "warning";
 }
 
+export type OnboardingAxisId =
+  | "patternRecognition"
+  | "deepFocus"
+  | "creativity"
+  | "principledJudgement"
+  | "executiveFunction"
+  | "healthWellbeingSafety"
+  | "sensoryRegulation"
+  | "mobilityNavigationSocial";
+
+export type OnboardingBundleId =
+  | "sensoryShield"
+  | "startEngine"
+  | "dailyControlDeck"
+  | "outAndAbout"
+  | "clearComms"
+  | "signalsAndPatterns";
+
+export type ThemeModePreference = "light" | "dark" | "sameAsCurrent";
+
+export interface OnboardingProfile {
+  axisScores: Record<OnboardingAxisId, number>;
+  displayName?: string;
+  themeModePreference: ThemeModePreference;
+  preferredThemeId?: string;
+  recommendedBundle: OnboardingBundleId;
+  selectedBundle: OnboardingBundleId;
+  selectedModules: string[];
+  completedAt: Date;
+  skipped: boolean;
+}
+
 export type WidgetId = 
   | "gamification" 
   | "symptomTracker" 
@@ -243,6 +275,11 @@ interface DataContextType {
   updateCountUpTimer: (id: string, timer: Partial<CountUpTimer>) => void;
   removeCountUpTimer: (id: string) => void;
   resetCountUpTimer: (id: string) => void;
+  onboardingComplete: boolean;
+  setOnboardingComplete: (complete: boolean) => void;
+  onboardingProfile: OnboardingProfile | null;
+  saveOnboardingProfile: (profile: OnboardingProfile) => void;
+  clearOnboardingProfile: () => void;
   isLoading: boolean;
 }
 
@@ -268,6 +305,8 @@ const STORAGE_KEYS = {
   lowSensorySettings: "@spikeyprofile/lowSensorySettings",
   countdownTimers: "@spikeyprofile/countdownTimers",
   countUpTimers: "@spikeyprofile/countUpTimers",
+  onboardingComplete: "@spikeyprofile/onboardingComplete",
+  onboardingProfile: "@spikeyprofile/onboardingProfile",
 };
 
 const DEFAULT_LOW_SENSORY_SETTINGS: LowSensorySettings = {
@@ -452,6 +491,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [alarmSchedules, setAlarmSchedules] = useState<AlarmSchedule[]>([]);
   const [countdownTimers, setCountdownTimers] = useState<CountdownTimer[]>([]);
   const [countUpTimers, setCountUpTimers] = useState<CountUpTimer[]>([]);
+  const [onboardingComplete, setOnboardingCompleteState] = useState(false);
+  const [onboardingProfile, setOnboardingProfileState] = useState<OnboardingProfile | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({
     ...INITIAL_STATS,
     totalEntries: SAMPLE_ENTRIES.length,
@@ -490,6 +531,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedLowSensory,
         storedCountdownTimers,
         storedCountUpTimers,
+        storedOnboardingComplete,
+        storedOnboardingProfile,
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.symptomEntries),
         AsyncStorage.getItem(STORAGE_KEYS.clipboardItems),
@@ -510,6 +553,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.lowSensorySettings),
         AsyncStorage.getItem(STORAGE_KEYS.countdownTimers),
         AsyncStorage.getItem(STORAGE_KEYS.countUpTimers),
+        AsyncStorage.getItem(STORAGE_KEYS.onboardingComplete),
+        AsyncStorage.getItem(STORAGE_KEYS.onboardingProfile),
       ]);
 
       if (storedSymptoms) setSymptomEntries(deserializeData(storedSymptoms));
@@ -579,6 +624,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setCountUpTimers(deserializeData(storedCountUpTimers));
         } catch {
           setCountUpTimers([]);
+        }
+      }
+
+      if (storedOnboardingComplete !== null) {
+        setOnboardingCompleteState(storedOnboardingComplete === "true");
+      }
+
+      if (storedOnboardingProfile) {
+        try {
+          setOnboardingProfileState(deserializeData(storedOnboardingProfile));
+        } catch {
+          setOnboardingProfileState(null);
         }
       }
     } catch (error) {
@@ -988,6 +1045,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, [saveToStorage]);
 
+  const setOnboardingComplete = useCallback(
+    (complete: boolean) => {
+      setOnboardingCompleteState(complete);
+      saveToStorage(STORAGE_KEYS.onboardingComplete, complete.toString());
+    },
+    [saveToStorage],
+  );
+
+  const saveOnboardingProfile = useCallback(
+    (profile: OnboardingProfile) => {
+      setOnboardingProfileState(profile);
+      saveToStorage(STORAGE_KEYS.onboardingProfile, profile);
+      setOnboardingCompleteState(true);
+      saveToStorage(STORAGE_KEYS.onboardingComplete, "true");
+    },
+    [saveToStorage],
+  );
+
+  const clearOnboardingProfile = useCallback(() => {
+    setOnboardingProfileState(null);
+    setOnboardingCompleteState(false);
+    saveToStorage(STORAGE_KEYS.onboardingProfile, "null");
+    saveToStorage(STORAGE_KEYS.onboardingComplete, "false");
+  }, [saveToStorage]);
+
   return (
     <DataContext.Provider
       value={{
@@ -1053,6 +1135,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateCountUpTimer,
         removeCountUpTimer,
         resetCountUpTimer,
+        onboardingComplete,
+        setOnboardingComplete,
+        onboardingProfile,
+        saveOnboardingProfile,
+        clearOnboardingProfile,
         isLoading,
       }}
     >

@@ -58,12 +58,12 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
       withRepeat(
         withSequence(
           withTiming(0, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(-10, { duration: 800, easing: Easing.inOut(Easing.ease) })
+          withTiming(-10, { duration: 800, easing: Easing.inOut(Easing.ease) }),
         ),
         2,
-        true
+        true,
       ),
-      withTiming(0, { duration: 300 })
+      withTiming(0, { duration: 300 }),
     );
 
     pulseScale.value = withDelay(
@@ -71,11 +71,11 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
       withRepeat(
         withSequence(
           withTiming(1.5, { duration: 600, easing: Easing.out(Easing.ease) }),
-          withTiming(1, { duration: 600, easing: Easing.in(Easing.ease) })
+          withTiming(1, { duration: 600, easing: Easing.in(Easing.ease) }),
         ),
         3,
-        true
-      )
+        true,
+      ),
     );
 
     pulseOpacity.value = withDelay(
@@ -83,11 +83,11 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
       withRepeat(
         withSequence(
           withTiming(0.7, { duration: 600 }),
-          withTiming(0.2, { duration: 600 })
+          withTiming(0.2, { duration: 600 }),
         ),
         3,
-        true
-      )
+        true,
+      ),
     );
 
     setTimeout(() => {
@@ -99,7 +99,7 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
       setSimulationStep(2);
       tagGlow.value = withSequence(
         withTiming(1, { duration: 200 }),
-        withTiming(0.5, { duration: 300 })
+        withTiming(0.5, { duration: 300 }),
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }, 3000);
@@ -134,22 +134,26 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
     {
       icon: "edit-3",
       title: "Set Up Your Actions",
-      description: "Go to the Quick Log card on your home screen and create the actions you want to track, like taking medication or logging a symptom.",
+      description:
+        "Go to the Quick Log card on your home screen and create the actions you want to track, like taking medication or logging a symptom.",
     },
     {
       icon: "smartphone",
       title: "Get NFC Tags",
-      description: "Purchase blank NFC tags (available online). Place them where you'll see them - on your medicine cabinet, by your bed, or on your water bottle.",
+      description:
+        "Purchase blank NFC tags (available online). Place them where you'll see them - on your medicine cabinet, by your bed, or on your water bottle.",
     },
     {
       icon: "download",
       title: "Write to Tags",
-      description: "Use an NFC writing app to encode a deep link to SpikeyProfile. Each tag can trigger a specific action when tapped.",
+      description:
+        "In SpikeyProfile, open Quick Log > NFC Setup and copy/share the generated action URL. Use any NFC writer app to write that URL to a tag.",
     },
     {
       icon: "zap",
       title: "Tap to Log",
-      description: "When you tap your phone to an NFC tag, SpikeyProfile opens and instantly logs that action. No typing needed!",
+      description:
+        "When you tap your phone to a programmed tag, SpikeyProfile opens from the deep link and logs the mapped quick action instantly.",
     },
   ];
 
@@ -168,7 +172,9 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <ThemedView style={[styles.content, { backgroundColor: theme.surface }]}>
+        <ThemedView
+          style={[styles.content, { backgroundColor: theme.surface }]}
+        >
           <View style={styles.header}>
             <ThemedText type="h3">How NFC Quick Log Works</ThemedText>
             <Pressable onPress={onClose}>
@@ -177,47 +183,115 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
           </View>
 
           <View style={styles.simulatorSection}>
-            <ThemedText type="small" style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              type="small"
+              style={[styles.sectionLabel, { color: theme.textSecondary }]}
+            >
               Try the Simulation
             </ThemedText>
 
-            <View style={[styles.simulator, { backgroundColor: theme.surfaceVariant }]}>
+            <View
+              style={[
+                styles.simulator,
+                { backgroundColor: theme.surfaceVariant },
+              ]}
+            >
               <View style={styles.simulatorVisual}>
                 <View style={[styles.nfcTag, { borderColor: theme.divider }]}>
-                  <Animated.View style={[styles.tagGlowRing, { backgroundColor: theme.success }, tagGlowStyle]} />
-                  <Feather name="wifi" size={20} color={theme.textSecondary} style={{ transform: [{ rotate: "45deg" }] }} />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>NFC Tag</ThemedText>
+                  <Animated.View
+                    style={[
+                      styles.tagGlowRing,
+                      { backgroundColor: theme.success },
+                      tagGlowStyle,
+                    ]}
+                  />
+                  <Feather
+                    name="wifi"
+                    size={20}
+                    color={theme.textSecondary}
+                    style={{ transform: [{ rotate: "45deg" }] }}
+                  />
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    NFC Tag
+                  </ThemedText>
                 </View>
 
                 <View style={styles.phoneContainer}>
                   <Animated.View style={phoneStyle}>
-                    <View style={[styles.phone, { borderColor: theme.divider, backgroundColor: theme.surface }]}>
-                      <Animated.View style={[styles.pulseRing, { borderColor: theme.primary }, pulseStyle]} />
-                      <Feather name="smartphone" size={28} color={theme.primary} />
+                    <View
+                      style={[
+                        styles.phone,
+                        {
+                          borderColor: theme.divider,
+                          backgroundColor: theme.surface,
+                        },
+                      ]}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.pulseRing,
+                          { borderColor: theme.primary },
+                          pulseStyle,
+                        ]}
+                      />
+                      <Feather
+                        name="smartphone"
+                        size={28}
+                        color={theme.primary}
+                      />
                     </View>
                   </Animated.View>
                 </View>
               </View>
 
               <View style={styles.simulatorStatus}>
-                <ThemedText type="body" style={{ color: theme.text, fontWeight: "600", textAlign: "center" }}>
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: theme.text,
+                    fontWeight: "600",
+                    textAlign: "center",
+                  }}
+                >
                   {simulationSteps[simulationStep]}
                 </ThemedText>
                 {simulationComplete && (
-                  <View style={[styles.successBadge, { backgroundColor: theme.success + "20" }]}>
+                  <View
+                    style={[
+                      styles.successBadge,
+                      { backgroundColor: theme.success + "20" },
+                    ]}
+                  >
                     <Feather name="check" size={16} color={theme.success} />
-                    <ThemedText type="caption" style={{ color: theme.success }}>Medication taken at 2:30 PM</ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.success }}>
+                      Medication taken at 2:30 PM
+                    </ThemedText>
                   </View>
                 )}
               </View>
 
               {!isSimulating && (
                 <Pressable
-                  onPress={simulationComplete ? resetSimulation : startSimulation}
-                  style={[styles.simulateButton, { backgroundColor: theme.primary }]}
+                  onPress={
+                    simulationComplete ? resetSimulation : startSimulation
+                  }
+                  style={[
+                    styles.simulateButton,
+                    { backgroundColor: theme.primary },
+                  ]}
                 >
-                  <Feather name={simulationComplete ? "refresh-cw" : "play"} size={18} color="#FFFFFF" />
-                  <ThemedText type="body" style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                  <Feather
+                    name={simulationComplete ? "refresh-cw" : "play"}
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFFFFF", fontWeight: "600" }}
+                  >
                     {simulationComplete ? "Try Again" : "Start Simulation"}
                   </ThemedText>
                 </Pressable>
@@ -226,23 +300,43 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
           </View>
 
           <View style={styles.stepsSection}>
-            <ThemedText type="small" style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              type="small"
+              style={[styles.sectionLabel, { color: theme.textSecondary }]}
+            >
               Setup Steps
             </ThemedText>
 
             {steps.map((step, index) => (
               <View key={index} style={styles.step}>
-                <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}>
-                  <ThemedText type="caption" style={{ color: "#FFFFFF", fontWeight: "700" }}>
+                <View
+                  style={[
+                    styles.stepNumber,
+                    { backgroundColor: theme.primary },
+                  ]}
+                >
+                  <ThemedText
+                    type="caption"
+                    style={{ color: "#FFFFFF", fontWeight: "700" }}
+                  >
                     {index + 1}
                   </ThemedText>
                 </View>
                 <View style={styles.stepContent}>
                   <View style={styles.stepHeader}>
-                    <Feather name={step.icon as any} size={16} color={theme.primary} />
-                    <ThemedText type="body" style={{ fontWeight: "600" }}>{step.title}</ThemedText>
+                    <Feather
+                      name={step.icon as any}
+                      size={16}
+                      color={theme.primary}
+                    />
+                    <ThemedText type="body" style={{ fontWeight: "600" }}>
+                      {step.title}
+                    </ThemedText>
                   </View>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, lineHeight: 18 }}>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, lineHeight: 18 }}
+                  >
                     {step.description}
                   </ThemedText>
                 </View>
@@ -250,14 +344,20 @@ export function NFCHowToGuide({ visible, onClose }: NFCHowToGuideProps) {
             ))}
           </View>
 
-          <View style={[styles.tipBox, { backgroundColor: theme.accent + "15" }]}>
+          <View
+            style={[styles.tipBox, { backgroundColor: theme.accent + "15" }]}
+          >
             <Feather name="info" size={18} color={theme.accent} />
             <View style={styles.tipContent}>
-              <ThemedText type="body" style={{ fontWeight: "600", color: theme.accent }}>
+              <ThemedText
+                type="body"
+                style={{ fontWeight: "600", color: theme.accent }}
+              >
                 Pro Tip
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.text }}>
-                Start with one or two NFC tags for your most important daily tasks. Add more as you build the habit!
+                Start with one or two tags for your highest-priority routines.
+                Use the in-app NFC Setup sheet to generate one URL per action.
               </ThemedText>
             </View>
           </View>

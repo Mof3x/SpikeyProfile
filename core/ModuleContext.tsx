@@ -131,6 +131,7 @@ const STORAGE_KEY = "@spikeyprofile/modules";
 interface ModuleContextType {
   modules: ModuleConfig[];
   toggleModule: (id: ModuleId) => void;
+  setEnabledModules: (enabledIds: ModuleId[]) => void;
   isModuleEnabled: (id: ModuleId) => boolean;
   resetToDefaults: () => void;
 }
@@ -178,6 +179,21 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     });
   }, [saveModules]);
 
+  const setEnabledModules = useCallback(
+    (enabledIds: ModuleId[]) => {
+      setModules((prev) => {
+        const enabledSet = new Set(enabledIds);
+        const updated = prev.map((module) => ({
+          ...module,
+          enabled: enabledSet.has(module.id),
+        }));
+        saveModules(updated);
+        return updated;
+      });
+    },
+    [saveModules],
+  );
+
   const isModuleEnabled = useCallback((id: ModuleId): boolean => {
     return modules.find((m) => m.id === id)?.enabled ?? false;
   }, [modules]);
@@ -189,7 +205,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
   return (
     <ModuleContext.Provider
-      value={{ modules, toggleModule, isModuleEnabled, resetToDefaults }}
+      value={{ modules, toggleModule, setEnabledModules, isModuleEnabled, resetToDefaults }}
     >
       {children}
     </ModuleContext.Provider>

@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  StyleSheet,
+  View,
+  Pressable,
+  TextInput,
+  Modal,
+  ScrollView,
+  Alert,
+  Share,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -15,6 +24,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useData, QuickLogAction } from "@/core/DataContext";
+import { createQuickLogDeepLink } from "@/core/nfcLinks";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 function QuickLogButton({
@@ -37,11 +47,11 @@ function QuickLogButton({
     scale.value = withSequence(
       withSpring(0.9, { damping: 15 }),
       withSpring(1.1, { damping: 10 }),
-      withSpring(1, { damping: 15 })
+      withSpring(1, { damping: 15 }),
     );
     opacity.value = withSequence(
       withSpring(0.7),
-      withDelay(100, withSpring(1))
+      withDelay(100, withSpring(1)),
     );
     onPress();
   };
@@ -67,7 +77,11 @@ function QuickLogButton({
             color={categoryColors[action.category]}
           />
         </View>
-        <ThemedText type="caption" style={styles.quickButtonLabel} numberOfLines={2}>
+        <ThemedText
+          type="caption"
+          style={styles.quickButtonLabel}
+          numberOfLines={2}
+        >
           {action.name}
         </ThemedText>
       </Pressable>
@@ -77,13 +91,35 @@ function QuickLogButton({
 
 export function NFCQuickLogCard() {
   const { theme, typography } = useTheme();
-  const { quickLogActions, logQuickAction, addQuickLogAction, quickLogEntries } = useData();
+  const {
+    quickLogActions,
+    logQuickAction,
+    addQuickLogAction,
+    quickLogEntries,
+  } = useData();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showNfcModal, setShowNfcModal] = useState(false);
   const [newActionName, setNewActionName] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("star");
-  const [selectedCategory, setSelectedCategory] = useState<"medication" | "habit" | "custom">("custom");
+  const [selectedCategory, setSelectedCategory] = useState<
+    "medication" | "habit" | "custom"
+  >("custom");
+  const [selectedNfcActionId, setSelectedNfcActionId] = useState<string | null>(
+    null,
+  );
 
   const enabledActions = quickLogActions.filter((a) => a.enabled);
+  const selectedNfcAction = useMemo(
+    () =>
+      enabledActions.find((action) => action.id === selectedNfcActionId) ??
+      enabledActions[0] ??
+      null,
+    [enabledActions, selectedNfcActionId],
+  );
+  const selectedNfcUrl = selectedNfcAction
+    ? createQuickLogDeepLink(selectedNfcAction.id)
+    : "";
+
   const todayLogs = quickLogEntries.filter((e) => {
     const entryDate = new Date(e.timestamp);
     const today = new Date();
@@ -109,7 +145,40 @@ export function NFCQuickLogCard() {
     }
   };
 
-  const icons = ["plus-circle", "droplet", "sun", "moon", "coffee", "heart", "star", "zap", "smile", "activity"];
+  const handleOpenNfcModal = () => {
+    setSelectedNfcActionId(
+      (previous) => previous ?? enabledActions[0]?.id ?? null,
+    );
+    setShowNfcModal(true);
+  };
+
+  const handleShareNfcLink = async () => {
+    if (!selectedNfcAction) {
+      return;
+    }
+    await Share.share({
+      message: `SpikeyProfile NFC quick-log link for "${selectedNfcAction.name}": ${selectedNfcUrl}`,
+    });
+  };
+
+  const handleTestNfcLink = (actionId: string) => {
+    logQuickAction(actionId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("NFC test", "Quick log action triggered successfully.");
+  };
+
+  const icons = [
+    "plus-circle",
+    "droplet",
+    "sun",
+    "moon",
+    "coffee",
+    "heart",
+    "star",
+    "zap",
+    "smile",
+    "activity",
+  ];
   const categories = [
     { id: "medication", label: "Medication", icon: "plus-circle" },
     { id: "habit", label: "Habit", icon: "repeat" },
@@ -121,7 +190,12 @@ export function NFCQuickLogCard() {
       <Card elevation={1}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <View style={[styles.iconContainer, { backgroundColor: theme.secondary + "20" }]}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: theme.secondary + "20" },
+              ]}
+            >
               <Feather name="zap" size={18} color={theme.secondary} />
             </View>
             <View>
@@ -135,7 +209,10 @@ export function NFCQuickLogCard() {
             onPress={() => setShowAddModal(true)}
             style={({ pressed }) => [
               styles.addButton,
-              { backgroundColor: theme.surfaceVariant, opacity: pressed ? 0.7 : 1 },
+              {
+                backgroundColor: theme.surfaceVariant,
+                opacity: pressed ? 0.7 : 1,
+              },
             ]}
           >
             <Feather name="plus" size={18} color={theme.primary} />
@@ -152,13 +229,136 @@ export function NFCQuickLogCard() {
           ))}
         </View>
 
-        <View style={[styles.nfcHint, { backgroundColor: theme.surfaceVariant }]}>
+        <View
+          style={[styles.nfcHint, { backgroundColor: theme.surfaceVariant }]}
+        >
           <Feather name="smartphone" size={14} color={theme.textSecondary} />
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            Tap to log instantly
+            Tap tags to log instantly
           </ThemedText>
+          <Pressable
+            onPress={handleOpenNfcModal}
+            style={[
+              styles.nfcSetupButton,
+              { backgroundColor: theme.primary + "25" },
+            ]}
+          >
+            <ThemedText
+              type="caption"
+              style={{ color: theme.primary, fontWeight: "600" }}
+            >
+              NFC Setup
+            </ThemedText>
+          </Pressable>
         </View>
       </Card>
+
+      <Modal
+        visible={showNfcModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowNfcModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView
+            style={[styles.modalContent, { backgroundColor: theme.surface }]}
+          >
+            <View style={styles.modalHeader}>
+              <ThemedText type="h3">NFC Tag Setup</ThemedText>
+              <Pressable onPress={() => setShowNfcModal(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+            >
+              Pick an action, write its URL to a tag with any NFC writer app,
+              then tap the tag to open and log.
+            </ThemedText>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.actionPillsRow}>
+                {enabledActions.map((action) => {
+                  const selected = selectedNfcAction?.id === action.id;
+                  return (
+                    <Pressable
+                      key={action.id}
+                      onPress={() => setSelectedNfcActionId(action.id)}
+                      style={[
+                        styles.actionPill,
+                        {
+                          backgroundColor: selected
+                            ? theme.primary
+                            : theme.surfaceVariant,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        type="caption"
+                        style={{ color: selected ? "#FFFFFF" : theme.text }}
+                      >
+                        {action.name}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+
+            <View
+              style={[styles.urlBox, { backgroundColor: theme.surfaceVariant }]}
+            >
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}
+              >
+                URL to write on tag
+              </ThemedText>
+              <ThemedText type="small" selectable style={{ color: theme.text }}>
+                {selectedNfcUrl || "No enabled actions available"}
+              </ThemedText>
+            </View>
+
+            <View style={styles.nfcModalActions}>
+              <Pressable
+                onPress={handleShareNfcLink}
+                disabled={!selectedNfcAction}
+                style={[
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: theme.surfaceVariant,
+                    opacity: selectedNfcAction ? 1 : 0.5,
+                  },
+                ]}
+              >
+                <Feather name="share" size={16} color={theme.text} />
+                <ThemedText type="small">Share URL</ThemedText>
+              </Pressable>
+
+              <Pressable
+                onPress={() =>
+                  selectedNfcAction && handleTestNfcLink(selectedNfcAction.id)
+                }
+                disabled={!selectedNfcAction}
+                style={[
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: theme.primary + "20",
+                    opacity: selectedNfcAction ? 1 : 0.5,
+                  },
+                ]}
+              >
+                <Feather name="play" size={16} color={theme.primary} />
+                <ThemedText type="small" style={{ color: theme.primary }}>
+                  Test now
+                </ThemedText>
+              </Pressable>
+            </View>
+          </ThemedView>
+        </View>
+      </Modal>
 
       <Modal
         visible={showAddModal}
@@ -167,7 +367,9 @@ export function NFCQuickLogCard() {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <ThemedView style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+          <ThemedView
+            style={[styles.modalContent, { backgroundColor: theme.surface }]}
+          >
             <View style={styles.modalHeader}>
               <ThemedText type="h3">Add Quick Action</ThemedText>
               <Pressable onPress={() => setShowAddModal(false)}>
@@ -178,8 +380,8 @@ export function NFCQuickLogCard() {
             <TextInput
               style={[
                 styles.input,
-                { 
-                  backgroundColor: theme.surfaceVariant, 
+                {
+                  backgroundColor: theme.surfaceVariant,
                   color: theme.text,
                   fontSize: typography.body.fontSize,
                 },
@@ -190,7 +392,10 @@ export function NFCQuickLogCard() {
               placeholderTextColor={theme.textSecondary}
             />
 
-            <ThemedText type="small" style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              type="small"
+              style={[styles.sectionLabel, { color: theme.textSecondary }]}
+            >
               Category
             </ThemedText>
             <View style={styles.categoryRow}>
@@ -202,7 +407,9 @@ export function NFCQuickLogCard() {
                     styles.categoryButton,
                     {
                       backgroundColor:
-                        selectedCategory === cat.id ? theme.primary : theme.surfaceVariant,
+                        selectedCategory === cat.id
+                          ? theme.primary
+                          : theme.surfaceVariant,
                     },
                   ]}
                 >
@@ -213,7 +420,10 @@ export function NFCQuickLogCard() {
                   />
                   <ThemedText
                     type="small"
-                    style={{ color: selectedCategory === cat.id ? "#FFFFFF" : theme.text }}
+                    style={{
+                      color:
+                        selectedCategory === cat.id ? "#FFFFFF" : theme.text,
+                    }}
                   >
                     {cat.label}
                   </ThemedText>
@@ -221,7 +431,10 @@ export function NFCQuickLogCard() {
               ))}
             </View>
 
-            <ThemedText type="small" style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              type="small"
+              style={[styles.sectionLabel, { color: theme.textSecondary }]}
+            >
               Icon
             </ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -234,7 +447,9 @@ export function NFCQuickLogCard() {
                       styles.iconOption,
                       {
                         backgroundColor:
-                          selectedIcon === icon ? theme.primary : theme.surfaceVariant,
+                          selectedIcon === icon
+                            ? theme.primary
+                            : theme.surfaceVariant,
                       },
                     ]}
                   >
@@ -252,7 +467,10 @@ export function NFCQuickLogCard() {
               onPress={handleAddAction}
               style={[styles.submitButton, { backgroundColor: theme.primary }]}
             >
-              <ThemedText type="body" style={{ color: "#FFFFFF", fontWeight: "600" }}>
+              <ThemedText
+                type="body"
+                style={{ color: "#FFFFFF", fontWeight: "600" }}
+              >
                 Add Action
               </ThemedText>
             </Pressable>
@@ -310,11 +528,45 @@ const styles = StyleSheet.create({
   nfcHint: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     gap: Spacing.xs,
     marginTop: Spacing.lg,
     paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.sm,
+  },
+  nfcSetupButton: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+  },
+  actionPillsRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  actionPill: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  urlBox: {
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  nfcModalActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  secondaryButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: Spacing.xs,
   },
   modalOverlay: {
     flex: 1,

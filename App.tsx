@@ -6,18 +6,26 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
-import MainTabNavigator from "@/navigation/MainTabNavigator";
+import RootNavigator from "@/navigation/RootNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModuleProvider } from "@/core/ModuleContext";
-import { DataProvider } from "@/core/DataContext";
+import { DataProvider, useData } from "@/core/DataContext";
 import { ThemeProvider, useThemeContext } from "@/core/ThemeContext";
+import { OnboardingFlowProvider } from "@/core/OnboardingFlowContext";
+import { NfcLinkingHandler } from "@/core/NfcLinkingHandler";
 
 function AppContent() {
-  const { isDark, theme, isLoading } = useThemeContext();
+  const { isDark, theme, isLoading: isThemeLoading } = useThemeContext();
+  const { isLoading: isDataLoading } = useData();
 
-  if (isLoading) {
+  if (isThemeLoading || isDataLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.backgroundRoot },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
@@ -26,7 +34,8 @@ function AppContent() {
   return (
     <>
       <NavigationContainer>
-        <MainTabNavigator />
+        <NfcLinkingHandler />
+        <RootNavigator />
       </NavigationContainer>
       <StatusBar style={isDark ? "light" : "dark"} />
     </>
@@ -41,9 +50,11 @@ export default function App() {
           <ThemeProvider>
             <ModuleProvider>
               <DataProvider>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
+                <OnboardingFlowProvider>
+                  <ErrorBoundary>
+                    <AppContent />
+                  </ErrorBoundary>
+                </OnboardingFlowProvider>
               </DataProvider>
             </ModuleProvider>
           </ThemeProvider>

@@ -1,9 +1,15 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, Switch, TextInput, Alert, ScrollView } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Pressable,
+  Switch,
+  TextInput,
+  Alert,
+  ScrollView,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
@@ -63,7 +69,12 @@ function SettingsRow({
         !isLast && { borderBottomWidth: 1, borderBottomColor: theme.divider },
       ]}
     >
-      <View style={[styles.iconContainer, { backgroundColor: theme.surfaceVariant }]}>
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: theme.surfaceVariant },
+        ]}
+      >
         <Feather name={icon as any} size={18} color={theme.primary} />
       </View>
       <View style={styles.rowContent}>
@@ -165,7 +176,7 @@ function ThemePicker() {
 }
 
 function FontSizeSelector() {
-  const { theme, typography } = useTheme();
+  const { theme } = useTheme();
   const { fontSize, setFontSize } = useThemeContext();
 
   const sizes: { id: FontSize; label: string }[] = [
@@ -191,7 +202,9 @@ function FontSizeSelector() {
             style={[
               styles.fontSizeOption,
               {
-                backgroundColor: isSelected ? theme.primary : theme.surfaceVariant,
+                backgroundColor: isSelected
+                  ? theme.primary
+                  : theme.surfaceVariant,
               },
             ]}
           >
@@ -244,18 +257,19 @@ function LowSensoryModeSettings() {
   const toggleSetting = (key: keyof LowSensorySettings) => {
     Haptics.selectionAsync();
     const updated = { ...lowSensorySettings };
-    
+
     if (key === "enabled") {
       const newEnabled = !lowSensorySettings.enabled;
       updated.enabled = newEnabled;
-      
+
       if (newEnabled) {
-        const hasExistingPreferences = lowSensorySettings.reduceAnimations || 
-                                        lowSensorySettings.reduceContrast || 
-                                        lowSensorySettings.quietHaptics || 
-                                        lowSensorySettings.simplifyUI || 
-                                        lowSensorySettings.muteNotificationSounds;
-        
+        const hasExistingPreferences =
+          lowSensorySettings.reduceAnimations ||
+          lowSensorySettings.reduceContrast ||
+          lowSensorySettings.quietHaptics ||
+          lowSensorySettings.simplifyUI ||
+          lowSensorySettings.muteNotificationSounds;
+
         if (!hasExistingPreferences) {
           updated.reduceAnimations = true;
           updated.reduceContrast = true;
@@ -266,20 +280,49 @@ function LowSensoryModeSettings() {
       }
     } else {
       updated[key] = !lowSensorySettings[key];
-      const anyEnabled = updated.reduceAnimations || updated.reduceContrast || 
-                         updated.quietHaptics || updated.simplifyUI || updated.muteNotificationSounds;
+      const anyEnabled =
+        updated.reduceAnimations ||
+        updated.reduceContrast ||
+        updated.quietHaptics ||
+        updated.simplifyUI ||
+        updated.muteNotificationSounds;
       updated.enabled = anyEnabled;
     }
-    
+
     setLowSensorySettings(updated);
   };
 
   const settings = [
-    { key: "reduceAnimations" as const, icon: "zap-off", label: "Reduce Animations", description: "Minimize motion effects" },
-    { key: "reduceContrast" as const, icon: "sun", label: "Softer Colors", description: "Lower color intensity" },
-    { key: "quietHaptics" as const, icon: "smartphone", label: "Quiet Haptics", description: "Gentler vibrations" },
-    { key: "simplifyUI" as const, icon: "layout", label: "Simplified UI", description: "Less visual complexity" },
-    { key: "muteNotificationSounds" as const, icon: "bell-off", label: "Silent Notifications", description: "Visual alerts only" },
+    {
+      key: "reduceAnimations" as const,
+      icon: "zap-off",
+      label: "Reduce Animations",
+      description: "Minimize motion effects",
+    },
+    {
+      key: "reduceContrast" as const,
+      icon: "sun",
+      label: "Softer Colors",
+      description: "Lower color intensity",
+    },
+    {
+      key: "quietHaptics" as const,
+      icon: "smartphone",
+      label: "Quiet Haptics",
+      description: "Gentler vibrations",
+    },
+    {
+      key: "simplifyUI" as const,
+      icon: "layout",
+      label: "Simplified UI",
+      description: "Less visual complexity",
+    },
+    {
+      key: "muteNotificationSounds" as const,
+      icon: "bell-off",
+      label: "Silent Notifications",
+      description: "Visual alerts only",
+    },
   ];
 
   const getStatusText = () => {
@@ -293,7 +336,7 @@ function LowSensoryModeSettings() {
       lowSensorySettings.simplifyUI,
       lowSensorySettings.muteNotificationSounds,
     ].filter(Boolean).length;
-    
+
     if (enabledCount === 5) {
       return "On - All options enabled";
     }
@@ -303,14 +346,22 @@ function LowSensoryModeSettings() {
   return (
     <View style={styles.lowSensoryContainer}>
       <View style={styles.masterToggleRow}>
-        <View style={[styles.iconContainer, { backgroundColor: theme.primary + "20" }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: theme.primary + "20" },
+          ]}
+        >
           <Feather name="volume-x" size={18} color={theme.primary} />
         </View>
         <View style={styles.rowContent}>
           <ThemedText type="body" style={styles.rowLabel}>
             Low Sensory Mode
           </ThemedText>
-          <ThemedText type="small" style={[styles.rowDescription, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="small"
+            style={[styles.rowDescription, { color: theme.textSecondary }]}
+          >
             {getStatusText()}
           </ThemedText>
         </View>
@@ -322,20 +373,36 @@ function LowSensoryModeSettings() {
         />
       </View>
 
-      <View style={[styles.sensoryDivider, { backgroundColor: theme.divider }]} />
+      <View
+        style={[styles.sensoryDivider, { backgroundColor: theme.divider }]}
+      />
 
-      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+      <ThemedText
+        type="caption"
+        style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+      >
         Customize individual settings:
       </ThemedText>
 
       {settings.map((setting, index) => (
         <View key={setting.key} style={styles.sensoryOptionRow}>
-          <View style={[styles.sensoryIcon, { backgroundColor: theme.surfaceVariant }]}>
-            <Feather name={setting.icon as any} size={16} color={theme.textSecondary} />
+          <View
+            style={[
+              styles.sensoryIcon,
+              { backgroundColor: theme.surfaceVariant },
+            ]}
+          >
+            <Feather
+              name={setting.icon as any}
+              size={16}
+              color={theme.textSecondary}
+            />
           </View>
           <View style={styles.sensoryOptionContent}>
             <ThemedText type="body">{setting.label}</ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>{setting.description}</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {setting.description}
+            </ThemedText>
           </View>
           <Switch
             value={lowSensorySettings[setting.key]}
@@ -351,14 +418,19 @@ function LowSensoryModeSettings() {
 
 export default function SettingsScreen() {
   const { theme, typography } = useTheme();
-  const { isDark, setIsDark, currentPreset } = useThemeContext();
+  const { isDark, setIsDark } = useThemeContext();
   const { modules, resetToDefaults } = useModules();
-  const { userName, setUserName, userStats } = useData();
+  const {
+    userName,
+    setUserName,
+    userStats,
+    onboardingProfile,
+    setOnboardingComplete,
+    clearOnboardingProfile,
+  } = useData();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [showNFCGuide, setShowNFCGuide] = useState(false);
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
 
   const handleSaveName = () => {
     setUserName(nameInput);
@@ -385,7 +457,7 @@ export default function SettingsScreen() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -393,7 +465,42 @@ export default function SettingsScreen() {
     Alert.alert(
       "Export Data",
       "Your data will be exported as a CSV file. In the full version, this would generate a downloadable file.",
-      [{ text: "OK" }]
+      [{ text: "OK" }],
+    );
+  };
+
+  const handleRunOnboardingAgain = () => {
+    Alert.alert(
+      "Run onboarding again",
+      "This will reopen onboarding to refresh your profile and module setup.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Run",
+          onPress: () => {
+            Haptics.selectionAsync();
+            setOnboardingComplete(false);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleClearOnboardingProfile = () => {
+    Alert.alert(
+      "Clear onboarding profile",
+      "This removes saved onboarding answers and will show onboarding on next app load.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            clearOnboardingProfile();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
+      ],
     );
   };
 
@@ -412,8 +519,8 @@ export default function SettingsScreen() {
               <TextInput
                 style={[
                   styles.nameInput,
-                  { 
-                    backgroundColor: theme.surfaceVariant, 
+                  {
+                    backgroundColor: theme.surfaceVariant,
                     color: theme.text,
                     fontSize: typography.body.fontSize,
                   },
@@ -427,7 +534,10 @@ export default function SettingsScreen() {
               />
               <Pressable
                 onPress={handleSaveName}
-                style={[styles.saveNameButton, { backgroundColor: theme.primary }]}
+                style={[
+                  styles.saveNameButton,
+                  { backgroundColor: theme.primary },
+                ]}
               >
                 <Feather name="check" size={20} color="#FFFFFF" />
               </Pressable>
@@ -437,17 +547,12 @@ export default function SettingsScreen() {
               onPress={() => setEditingName(true)}
               style={styles.nameContainer}
             >
-              <ThemedText type="h4">
-                {userName || "Tap to set name"}
-              </ThemedText>
+              <ThemedText type="h4">{userName || "Tap to set name"}</ThemedText>
               <Feather name="edit-2" size={16} color={theme.textSecondary} />
             </Pressable>
           )}
           <Spacer height={Spacing.sm} />
-          <ThemedText
-            type="small"
-            style={{ color: theme.textSecondary }}
-          >
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
             Level {userStats.level} | {userStats.xp} XP
           </ThemedText>
         </View>
@@ -455,19 +560,27 @@ export default function SettingsScreen() {
 
       <SettingsSection title="APPEARANCE">
         <View style={styles.appearanceContent}>
-          <ThemedText type="small" style={[styles.appearanceLabel, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="small"
+            style={[styles.appearanceLabel, { color: theme.textSecondary }]}
+          >
             Theme
           </ThemedText>
           <ThemePicker />
-          
-          <View style={[styles.appearanceDivider, { backgroundColor: theme.divider }]} />
-          
+
+          <View
+            style={[
+              styles.appearanceDivider,
+              { backgroundColor: theme.divider },
+            ]}
+          />
+
           <View style={styles.darkModeRow}>
             <View style={styles.darkModeLabel}>
-              <Feather 
-                name={isDark ? "moon" : "sun"} 
-                size={18} 
-                color={theme.primary} 
+              <Feather
+                name={isDark ? "moon" : "sun"}
+                size={18}
+                color={theme.primary}
               />
               <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
                 {isDark ? "Dark Mode" : "Light Mode"}
@@ -480,10 +593,18 @@ export default function SettingsScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
-          
-          <View style={[styles.appearanceDivider, { backgroundColor: theme.divider }]} />
-          
-          <ThemedText type="small" style={[styles.appearanceLabel, { color: theme.textSecondary }]}>
+
+          <View
+            style={[
+              styles.appearanceDivider,
+              { backgroundColor: theme.divider },
+            ]}
+          />
+
+          <ThemedText
+            type="small"
+            style={[styles.appearanceLabel, { color: theme.textSecondary }]}
+          >
             Text Size
           </ThemedText>
           <FontSizeSelector />
@@ -495,7 +616,9 @@ export default function SettingsScreen() {
           <View key={module.id}>
             <ModuleToggle module={module} />
             {index < modules.length - 1 ? (
-              <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+              <View
+                style={[styles.divider, { backgroundColor: theme.divider }]}
+              />
             ) : null}
           </View>
         ))}
@@ -508,7 +631,11 @@ export default function SettingsScreen() {
           description="Download your data as CSV"
           onPress={handleExport}
           rightElement={
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={theme.textSecondary}
+            />
           }
         />
         <View style={[styles.divider, { backgroundColor: theme.divider }]} />
@@ -518,7 +645,46 @@ export default function SettingsScreen() {
           description="Restore default module settings"
           onPress={handleReset}
           rightElement={
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={theme.textSecondary}
+            />
+          }
+          isLast
+        />
+      </SettingsSection>
+
+      <SettingsSection title="ONBOARDING">
+        <SettingsRow
+          icon="refresh-cw"
+          label="Run onboarding again"
+          description="Retake setup and refresh your module recommendations"
+          onPress={handleRunOnboardingAgain}
+          rightElement={
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={theme.textSecondary}
+            />
+          }
+        />
+        <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+        <SettingsRow
+          icon="trash-2"
+          label="Clear onboarding profile"
+          description={
+            onboardingProfile
+              ? "Delete saved onboarding profile and answers"
+              : "No saved onboarding profile found"
+          }
+          onPress={handleClearOnboardingProfile}
+          rightElement={
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={theme.textSecondary}
+            />
           }
           isLast
         />
@@ -535,7 +701,11 @@ export default function SettingsScreen() {
           description="Learn how to use NFC tags for instant logging"
           onPress={() => setShowNFCGuide(true)}
           rightElement={
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={theme.textSecondary}
+            />
           }
           isLast
         />
@@ -552,7 +722,10 @@ export default function SettingsScreen() {
 
       <Spacer height={Spacing["5xl"]} />
 
-      <NFCHowToGuide visible={showNFCGuide} onClose={() => setShowNFCGuide(false)} />
+      <NFCHowToGuide
+        visible={showNFCGuide}
+        onClose={() => setShowNFCGuide(false)}
+      />
     </ScreenScrollView>
   );
 }
