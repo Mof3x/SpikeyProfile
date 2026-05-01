@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { StyleSheet, View, Pressable, TextInput } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -32,7 +32,8 @@ const MODE_OPTIONS: {
 
 export default function OnboardingPreferencesScreen() {
   const { theme } = useTheme();
-  const { themePresets } = useThemeContext();
+  const { themePresets, themeId, setThemeId, isDark, setIsDark, isLoading } =
+    useThemeContext();
   const navigation = useNavigation<NavigationProp>();
   const {
     displayName,
@@ -42,6 +43,15 @@ export default function OnboardingPreferencesScreen() {
     preferredThemeId,
     setPreferredThemeId,
   } = useOnboardingFlow();
+
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current || isLoading) {
+      return;
+    }
+    didInit.current = true;
+    setPreferredThemeId(themeId);
+  }, [isLoading, setPreferredThemeId, themeId]);
 
   const handleNext = () => {
     Haptics.selectionAsync();
@@ -85,7 +95,19 @@ export default function OnboardingPreferencesScreen() {
             return (
               <Pressable
                 key={option.id}
-                onPress={() => setThemeModePreference(option.id)}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setThemeModePreference(option.id);
+                  if (option.id === "light") {
+                    setIsDark(false);
+                  }
+                  if (option.id === "dark") {
+                    setIsDark(true);
+                  }
+                  if (option.id === "sameAsCurrent") {
+                    setIsDark(isDark);
+                  }
+                }}
                 style={[
                   styles.modeChip,
                   {
@@ -118,7 +140,11 @@ export default function OnboardingPreferencesScreen() {
             return (
               <Pressable
                 key={preset.id}
-                onPress={() => setPreferredThemeId(preset.id as ThemeId)}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setPreferredThemeId(preset.id as ThemeId);
+                  setThemeId(preset.id as ThemeId);
+                }}
                 style={[
                   styles.themeOption,
                   {

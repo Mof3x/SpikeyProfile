@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Fonts, Colors } from "@/constants/theme";
+import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -67,7 +67,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          Something unexpected happened. Don't worry, your data is safe.
+          Something unexpected happened. Don&apos;t worry, your data is safe.
         </ThemedText>
 
         <Pressable
@@ -81,7 +81,12 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             },
           ]}
         >
-          <Feather name="refresh-cw" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+          <Feather
+            name="refresh-cw"
+            size={20}
+            color="#FFFFFF"
+            style={styles.buttonIcon}
+          />
           <ThemedText
             type="body"
             style={[styles.buttonText, { color: "#FFFFFF" }]}

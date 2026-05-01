@@ -280,6 +280,9 @@ interface DataContextType {
   onboardingProfile: OnboardingProfile | null;
   saveOnboardingProfile: (profile: OnboardingProfile) => void;
   clearOnboardingProfile: () => void;
+  deviceStorageEnabled: boolean;
+  setDeviceStorageEnabled: (enabled: boolean) => void;
+  clearAllDeviceData: () => void;
   isLoading: boolean;
 }
 
@@ -307,6 +310,7 @@ const STORAGE_KEYS = {
   countUpTimers: "@spikeyprofile/countUpTimers",
   onboardingComplete: "@spikeyprofile/onboardingComplete",
   onboardingProfile: "@spikeyprofile/onboardingProfile",
+  deviceStorageEnabled: "@spikeyprofile/deviceStorageEnabled",
 };
 
 const DEFAULT_LOW_SENSORY_SETTINGS: LowSensorySettings = {
@@ -475,6 +479,8 @@ const deserializeData = (json: string): any => {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [deviceStorageEnabled, setDeviceStorageEnabledState] =
+    useState(true);
   const [symptomEntries, setSymptomEntries] = useState<SymptomEntry[]>(SAMPLE_ENTRIES);
   const [clipboardItems, setClipboardItems] = useState<ClipboardItem[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -509,8 +515,74 @@ export function DataProvider({ children }: { children: ReactNode }) {
     loadAllData();
   }, []);
 
+  const resetAllState = useCallback(() => {
+    setSymptomEntries([]);
+    setClipboardItems([]);
+    setTodos([]);
+    setCalendarEvents([]);
+    setCustomTrackers([]);
+    setCustomTrackerEntries([]);
+    setQuickLogActions(DEFAULT_QUICK_LOG_ACTIONS);
+    setQuickLogEntries([]);
+    setEmergencyContacts([]);
+    setEmergencyMessageState("Help - please contact me");
+    setMedicalInfoState(DEFAULT_MEDICAL_INFO);
+    setCrisisScripts(DEFAULT_CRISIS_SCRIPTS);
+    setLowSensorySettingsState(DEFAULT_LOW_SENSORY_SETTINGS);
+    setAlarmSchedules([]);
+    setCountdownTimers([]);
+    setCountUpTimers([]);
+    setOnboardingCompleteState(false);
+    setOnboardingProfileState(null);
+    setUserStats(INITIAL_STATS);
+    setUserNameState("");
+    setWidgetOrderState(DEFAULT_WIDGET_ORDER);
+  }, []);
+
+  const clearAllDeviceData = useCallback(async () => {
+    resetAllState();
+    try {
+      const keysToClear = Object.values(STORAGE_KEYS).filter(
+        (key) => key !== STORAGE_KEYS.deviceStorageEnabled,
+      );
+      await AsyncStorage.multiRemove(keysToClear);
+    } catch (error) {
+      console.error("Failed to clear on-device data:", error);
+    }
+  }, [resetAllState]);
+
+  const setDeviceStorageEnabled = useCallback(
+    async (enabled: boolean) => {
+      setDeviceStorageEnabledState(enabled);
+      try {
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.deviceStorageEnabled,
+          enabled.toString(),
+        );
+      } catch (error) {
+        console.error("Failed to save storage preference:", error);
+      }
+
+      if (!enabled) {
+        await clearAllDeviceData();
+      }
+    },
+    [clearAllDeviceData],
+  );
+
   const loadAllData = async () => {
     try {
+      const storedStorageEnabled = await AsyncStorage.getItem(
+        STORAGE_KEYS.deviceStorageEnabled,
+      );
+      const enabled = storedStorageEnabled !== "false";
+      setDeviceStorageEnabledState(enabled);
+
+      if (!enabled) {
+        resetAllState();
+        return;
+      }
+
       const [
         storedSymptoms,
         storedClipboard,
@@ -646,12 +718,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const saveToStorage = useCallback(async (key: string, data: any) => {
+    if (!deviceStorageEnabled) {
+      return;
+    }
     try {
       await AsyncStorage.setItem(key, typeof data === "string" ? data : serializeData(data));
     } catch (error) {
       console.error(`Failed to save ${key}:`, error);
     }
-  }, []);
+  }, [deviceStorageEnabled]);
 
   const addSymptomEntry = useCallback((entry: Omit<SymptomEntry, "id" | "timestamp">) => {
     const newEntry: SymptomEntry = {
@@ -1140,6 +1215,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         onboardingProfile,
         saveOnboardingProfile,
         clearOnboardingProfile,
+        deviceStorageEnabled,
+        setDeviceStorageEnabled,
+        clearAllDeviceData,
         isLoading,
       }}
     >

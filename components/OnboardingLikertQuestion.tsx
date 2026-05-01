@@ -1,5 +1,6 @@
 import React from "react";
-import { StyleSheet, View, Pressable } from "react-native";
+import { StyleSheet, View } from "react-native";
+import Slider from "@react-native-community/slider";
 
 import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
@@ -13,7 +14,8 @@ interface OnboardingLikertQuestionProps {
   onChange: (score: number) => void;
 }
 
-const SCORE_OPTIONS = [1, 2, 3, 4, 5];
+const MIN_SCORE = 1;
+const MAX_SCORE = 5;
 
 export function OnboardingLikertQuestion({
   question,
@@ -22,57 +24,68 @@ export function OnboardingLikertQuestion({
 }: OnboardingLikertQuestionProps) {
   const { theme } = useTheme();
 
+  const lowLabel = question.options[0] ?? "";
+  const highLabel = question.options[question.options.length - 1] ?? "";
+
   return (
     <Card style={styles.card}>
-      <ThemedText type="h4">{question.title}</ThemedText>
+      <ThemedText type="h3">{question.title}</ThemedText>
       <ThemedText
-        type="small"
+        type="body"
         style={[styles.prompt, { color: theme.textSecondary }]}
       >
         {question.prompt}
       </ThemedText>
 
-      <View style={styles.row}>
-        {SCORE_OPTIONS.map((score) => {
-          const active = value === score;
-          return (
-            <Pressable
-              key={score}
-              onPress={() => onChange(score)}
-              style={[
-                styles.scoreChip,
-                {
-                  backgroundColor: active
-                    ? theme.primary
-                    : theme.surfaceVariant,
-                  borderColor: active ? theme.primary : theme.divider,
-                },
-              ]}
-            >
-              <ThemedText
-                type="body"
-                style={{
-                  color: active ? "#FFFFFF" : theme.text,
-                  fontWeight: "600",
-                }}
-              >
-                {score}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
-      </View>
+      <View style={styles.sliderRow}>
+        <View style={styles.sliderCol}>
+          <ThemedText
+            type="small"
+            style={[styles.endpointLabel, { color: theme.textSecondary }]}
+          >
+            {MAX_SCORE} — {highLabel}
+          </ThemedText>
 
-      <View style={styles.scaleLabels}>
-        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-          {question.options[0]}
-        </ThemedText>
-        <ThemedText
-          type="caption"
-          style={[styles.scaleRight, { color: theme.textSecondary }]}
-        >
-          {question.options[question.options.length - 1]}
-        </ThemedText>
+          <View style={styles.sliderWrap}>
+            <Slider
+              value={value}
+              minimumValue={MIN_SCORE}
+              maximumValue={MAX_SCORE}
+              step={1}
+              onValueChange={onChange}
+              minimumTrackTintColor={theme.primary}
+              maximumTrackTintColor={theme.divider}
+              thumbTintColor={theme.primary}
+              style={styles.slider}
+            />
+          </View>
+
+          <ThemedText
+            type="small"
+            style={[styles.endpointLabel, { color: theme.textSecondary }]}
+          >
+            {MIN_SCORE} — {lowLabel}
+          </ThemedText>
+        </View>
+
+        <View style={styles.valuePillWrap}>
+          <View
+            style={[
+              styles.valuePill,
+              {
+                backgroundColor: theme.surfaceVariant,
+                borderColor: theme.divider,
+              },
+            ]}
+          >
+            <ThemedText type="h3" style={{ fontWeight: "700" }}>
+              {value}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              /{MAX_SCORE}
+            </ThemedText>
+          </View>
+        </View>
       </View>
     </Card>
   );
@@ -83,24 +96,42 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   prompt: {
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  row: {
+  endpointLabel: {
+    textAlign: "center",
+  },
+  sliderRow: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.lg,
+  },
+  sliderCol: {
+    flex: 1,
+    alignItems: "center",
     gap: Spacing.sm,
   },
-  scoreChip: {
-    flex: 1,
-    height: 44,
-    borderRadius: BorderRadius.md,
+  sliderWrap: {
+    height: 200,
     alignItems: "center",
     justifyContent: "center",
+  },
+  slider: {
+    width: 200,
+    height: 44,
+    transform: [{ rotate: "-90deg" }],
+  },
+  valuePillWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  valuePill: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-  },
-  scaleLabels: {
-    gap: Spacing.xs,
-  },
-  scaleRight: {
-    textAlign: "right",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

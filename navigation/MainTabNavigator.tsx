@@ -11,6 +11,7 @@ import CalendarStackNavigator from "@/navigation/CalendarStackNavigator";
 import InsightsStackNavigator from "@/navigation/InsightsStackNavigator";
 import SettingsStackNavigator from "@/navigation/SettingsStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { useModules } from "@/core/ModuleContext";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 export type MainTabParamList = {
@@ -46,6 +47,7 @@ function FloatingActionButton({ onPress }: { onPress: () => void }) {
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
+  const { isModuleEnabled } = useModules();
 
   return (
     <Tab.Navigator
@@ -108,16 +110,18 @@ export default function MainTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="InsightsTab"
-        component={InsightsStackNavigator}
-        options={{
-          title: "Insights",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="bar-chart-2" size={size} color={color} />
-          ),
-        }}
-      />
+      {isModuleEnabled("patternInsights") && (
+        <Tab.Screen
+          name="InsightsTab"
+          component={InsightsStackNavigator}
+          options={{
+            title: "Insights",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="bar-chart-2" size={size} color={color} />
+            ),
+          }}
+        />
+      )}
       <Tab.Screen
         name="SettingsTab"
         component={SettingsStackNavigator}

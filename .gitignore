@@ -1,0 +1,9 @@
+# Expo
+.expo/
+.expo-shared/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log

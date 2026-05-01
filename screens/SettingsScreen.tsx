@@ -416,6 +416,74 @@ function LowSensoryModeSettings() {
   );
 }
 
+function DeviceStorageSettings() {
+  const { theme } = useTheme();
+  const { deviceStorageEnabled, setDeviceStorageEnabled, clearAllDeviceData } =
+    useData();
+
+  const handleToggleStorage = (nextValue: boolean) => {
+    if (!nextValue) {
+      Alert.alert(
+        "Turn off on-device storage?",
+        "Turning this off will clear saved data from this device and future changes will not be saved.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Turn off",
+            style: "destructive",
+            onPress: () => setDeviceStorageEnabled(false),
+          },
+        ],
+      );
+      return;
+    }
+    setDeviceStorageEnabled(true);
+  };
+
+  const handleClearData = () => {
+    Alert.alert(
+      "Clear on-device data?",
+      "This removes saved logs, settings, and onboarding data from this device. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => clearAllDeviceData(),
+        },
+      ],
+    );
+  };
+
+  return (
+    <SettingsSection title="Data & storage">
+      <SettingsRow
+        icon="database"
+        label="On-device storage"
+        description="Save your data locally on this device"
+        rightElement={
+          <Switch
+            value={deviceStorageEnabled}
+            onValueChange={handleToggleStorage}
+            trackColor={{ false: "#3A4150", true: theme.primary }}
+            thumbColor="#FFFFFF"
+          />
+        }
+      />
+      <SettingsRow
+        icon="trash-2"
+        label="Clear on-device data"
+        description="Remove all saved data from this device"
+        onPress={() => {
+          Haptics.selectionAsync();
+          handleClearData();
+        }}
+        isLast
+      />
+    </SettingsSection>
+  );
+}
+
 export default function SettingsScreen() {
   const { theme, typography } = useTheme();
   const { isDark, setIsDark } = useThemeContext();
@@ -623,6 +691,8 @@ export default function SettingsScreen() {
           </View>
         ))}
       </SettingsSection>
+
+      <DeviceStorageSettings />
 
       <SettingsSection title="DATA">
         <SettingsRow

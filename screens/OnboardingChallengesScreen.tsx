@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet } from "react-native";
+import React, { useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
@@ -25,8 +25,27 @@ export default function OnboardingChallengesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { axisScores, setAxisScore } = useOnboardingFlow();
 
+  const questions = useMemo(() => ONBOARDING_CHALLENGE_QUESTIONS, []);
+  const [index, setIndex] = useState(0);
+  const question = questions[index];
+  const isFirst = index === 0;
+  const isLast = index === questions.length - 1;
+
+  const handleBack = () => {
+    Haptics.selectionAsync();
+    if (!isFirst) {
+      setIndex((prev) => Math.max(0, prev - 1));
+      return;
+    }
+    navigation.navigate("OnboardingStrengths");
+  };
+
   const handleNext = () => {
     Haptics.selectionAsync();
+    if (!isLast) {
+      setIndex((prev) => Math.min(questions.length - 1, prev + 1));
+      return;
+    }
     navigation.navigate("OnboardingSummary");
   };
 
@@ -40,19 +59,31 @@ export default function OnboardingChallengesScreen() {
       />
       <Spacer height={Spacing.xl} />
 
-      {ONBOARDING_CHALLENGE_QUESTIONS.map((question) => (
-        <React.Fragment key={question.axisId}>
+      {question ? (
+        <>
           <OnboardingLikertQuestion
             question={question}
             value={axisScores[question.axisId]}
             onChange={(score) => setAxisScore(question.axisId, score)}
           />
           <Spacer height={Spacing.md} />
-        </React.Fragment>
-      ))}
 
-      <Spacer height={Spacing.lg} />
-      <Button onPress={handleNext}>Continue</Button>
+          <View style={styles.navRow}>
+            <Button
+              onPress={handleBack}
+              style={styles.navButton}
+            >
+              Back
+            </Button>
+            <Button
+              onPress={handleNext}
+              style={styles.navButton}
+            >
+              {isLast ? "Continue" : "Next"}
+            </Button>
+          </View>
+        </>
+      ) : null}
       <Spacer height={Spacing["4xl"]} />
     </ScreenScrollView>
   );
@@ -61,5 +92,12 @@ export default function OnboardingChallengesScreen() {
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
+  },
+  navRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  navButton: {
+    flex: 1,
   },
 });

@@ -3,6 +3,7 @@ import { ScrollView, ScrollViewProps, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { useScreenInsets } from "@/hooks/useScreenInsets";
 import { Spacing } from "@/constants/theme";
+import React from "react";
 
 export function ScreenScrollView({
   children,
