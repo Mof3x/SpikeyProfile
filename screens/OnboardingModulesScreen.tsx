@@ -108,12 +108,6 @@ export default function OnboardingModulesScreen() {
       <Card style={styles.card}>
         <ThemedText type="h4">Starter set helpers</ThemedText>
         <Button
-          onPress={handleApplyBundleDefaults}
-          style={{ backgroundColor: theme.surfaceVariant }}
-        >
-          Apply selected bundle defaults
-        </Button>
-        <Button
           onPress={handleApplyRecommended}
           style={{ backgroundColor: theme.surfaceVariant }}
         >

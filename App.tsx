@@ -12,6 +12,7 @@ import { ModuleProvider } from "@/core/ModuleContext";
 import { DataProvider, useData } from "@/core/DataContext";
 import { ThemeProvider, useThemeContext } from "@/core/ThemeContext";
 import { OnboardingFlowProvider } from "@/core/OnboardingFlowContext";
+import { LoggedFeedbackProvider } from "@/core/LoggedFeedbackContext";
 import { NfcLinkingHandler } from "@/core/NfcLinkingHandler";
 
 function AppContent() {
@@ -51,9 +52,11 @@ export default function App() {
             <ModuleProvider>
               <DataProvider>
                 <OnboardingFlowProvider>
-                  <ErrorBoundary>
-                    <AppContent />
-                  </ErrorBoundary>
+                  <LoggedFeedbackProvider>
+                    <ErrorBoundary>
+                      <AppContent />
+                    </ErrorBoundary>
+                  </LoggedFeedbackProvider>
                 </OnboardingFlowProvider>
               </DataProvider>
             </ModuleProvider>

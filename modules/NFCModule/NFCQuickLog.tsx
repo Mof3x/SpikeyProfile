@@ -24,6 +24,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useData, QuickLogAction } from "@/core/DataContext";
+import { useLoggedFeedback } from "@/core/LoggedFeedbackContext";
 import { createQuickLogDeepLink } from "@/core/nfcLinks";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -97,6 +98,7 @@ export function NFCQuickLogCard() {
     addQuickLogAction,
     quickLogEntries,
   } = useData();
+  const { showLogged } = useLoggedFeedback();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showNfcModal, setShowNfcModal] = useState(false);
   const [newActionName, setNewActionName] = useState("");
@@ -129,6 +131,12 @@ export function NFCQuickLogCard() {
   const handleLogAction = (actionId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     logQuickAction(actionId);
+    
+    // Show logged feedback popup
+    const action = quickLogActions.find((a) => a.id === actionId);
+    if (action) {
+      showLogged(action.name, action.icon);
+    }
   };
 
   const handleAddAction = () => {
@@ -164,7 +172,12 @@ export function NFCQuickLogCard() {
   const handleTestNfcLink = (actionId: string) => {
     logQuickAction(actionId);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("NFC test", "Quick log action triggered successfully.");
+    
+    // Show logged feedback popup
+    const action = quickLogActions.find((a) => a.id === actionId);
+    if (action) {
+      showLogged(action.name, action.icon);
+    }
   };
 
   const icons = [

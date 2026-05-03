@@ -214,7 +214,7 @@ export const DEFAULT_WIDGET_ORDER: WidgetId[] = [
 
 interface DataContextType {
   symptomEntries: SymptomEntry[];
-  addSymptomEntry: (entry: Omit<SymptomEntry, "id" | "timestamp">) => void;
+  addSymptomEntry: (entry: Omit<SymptomEntry, "id" | "timestamp">, timestamp?: Date) => void;
   clipboardItems: ClipboardItem[];
   addClipboardItem: (text: string) => void;
   removeClipboardItem: (id: string) => void;
@@ -728,11 +728,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [deviceStorageEnabled]);
 
-  const addSymptomEntry = useCallback((entry: Omit<SymptomEntry, "id" | "timestamp">) => {
+  const addSymptomEntry = useCallback((entry: Omit<SymptomEntry, "id" | "timestamp">, timestamp?: Date) => {
     const newEntry: SymptomEntry = {
       ...entry,
       id: Date.now().toString(),
-      timestamp: new Date(),
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
     };
     
     setSymptomEntries((prev) => {

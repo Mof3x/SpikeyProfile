@@ -12,6 +12,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useData, EmergencyContact, CrisisScript, MedicalInfo } from "@/core/DataContext";
+import { useLoggedFeedback } from "@/core/LoggedFeedbackContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 function ModalScrollWrapper({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,7 @@ export function EmergencyButtonCard() {
     addCrisisScript,
     removeCrisisScript,
   } = useData();
+  const { showLogged } = useLoggedFeedback();
   const [showSettings, setShowSettings] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showMedicalCard, setShowMedicalCard] = useState(false);
@@ -132,6 +134,7 @@ export function EmergencyButtonCard() {
       if (isAvailable) {
         const phoneNumbers = emergencyContacts.map((c) => c.phone);
         await SMS.sendSMSAsync(phoneNumbers, fullMessage);
+        showLogged("Emergency alert sent", "alert-circle");
         
         Alert.alert(
           "Message Prepared",

@@ -7,16 +7,27 @@ import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useData } from "@/core/DataContext";
+import { useLoggedFeedback } from "@/core/LoggedFeedbackContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 export function TodoWidget() {
   const { theme, typography } = useTheme();
   const { todos, addTodo, toggleTodo, removeTodo } = useData();
+  const { showLogged } = useLoggedFeedback();
   const [isAdding, setIsAdding] = useState(false);
   const [newTodoText, setNewTodoText] = useState("");
 
   const incompleteTodos = todos.filter((t) => !t.completed).slice(0, 5);
   const completedCount = todos.filter((t) => t.completed).length;
+  // Group todos into sections: Overdue, Today, Upcoming, No Date
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+  const overdue = todos.filter(t => t.dueDate && new Date(t.dueDate) < startOfToday && !t.completed);
+  const todayTodos = todos.filter(t => t.dueDate && new Date(t.dueDate) >= startOfToday && new Date(t.dueDate) < endOfToday && !t.completed);
+  const upcoming = todos.filter(t => t.dueDate && new Date(t.dueDate) >= endOfToday && !t.completed);
+  const noDate = todos.filter(t => !t.dueDate && !t.completed);
 
   const handleAddTodo = () => {
     if (newTodoText.trim()) {
@@ -29,13 +40,51 @@ export function TodoWidget() {
 
   const handleToggle = (id: string) => {
     Haptics.selectionAsync();
+    const todo = todos.find(t => t.id === id);
     toggleTodo(id);
+    
+    // Show feedback when task is completed
+    if (todo && !todo.completed) {
+      showLogged(`✓ ${todo.text}`, "check-square");
+    }
   };
 
   const handleRemove = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     removeTodo(id);
   };
+
+  const renderTodoItem = (todo: any) => (
+    <View key={todo.id} style={styles.todoItem}>
+      <Pressable
+        onPress={() => handleToggle(todo.id)}
+        style={[
+          styles.checkbox,
+          { borderColor: theme.primary },
+        ]}
+      >
+        {todo.completed ? (
+          <Feather name="check" size={14} color={theme.primary} />
+        ) : null}
+      </Pressable>
+      <ThemedText
+        type="body"
+        style={[
+          styles.todoText,
+          todo.completed && { textDecorationLine: "line-through", opacity: 0.5 },
+        ]}
+        numberOfLines={1}
+      >
+        {todo.text}
+      </ThemedText>
+      <Pressable
+        onPress={() => handleRemove(todo.id)}
+        style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
+      >
+        <Feather name="x" size={16} color={theme.textSecondary} />
+      </Pressable>
+    </View>
+  );
 
   return (
     <Card elevation={1}>
@@ -84,7 +133,7 @@ export function TodoWidget() {
         </View>
       ) : null}
 
-      {incompleteTodos.length === 0 ? (
+      {todos.length === 0 ? (
         <View style={styles.emptyState}>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
             Nothing here yet. Ready to add something?
@@ -92,37 +141,33 @@ export function TodoWidget() {
         </View>
       ) : (
         <View style={styles.todoList}>
-          {incompleteTodos.map((todo) => (
-            <View key={todo.id} style={styles.todoItem}>
-              <Pressable
-                onPress={() => handleToggle(todo.id)}
-                style={[
-                  styles.checkbox,
-                  { borderColor: theme.primary },
-                ]}
-              >
-                {todo.completed ? (
-                  <Feather name="check" size={14} color={theme.primary} />
-                ) : null}
-              </Pressable>
-              <ThemedText
-                type="body"
-                style={[
-                  styles.todoText,
-                  todo.completed && { textDecorationLine: "line-through", opacity: 0.5 },
-                ]}
-                numberOfLines={1}
-              >
-                {todo.text}
-              </ThemedText>
-              <Pressable
-                onPress={() => handleRemove(todo.id)}
-                style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
-              >
-                <Feather name="x" size={16} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-          ))}
+          {overdue.length > 0 && (
+            <>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>Overdue</ThemedText>
+              {overdue.map(todo => renderTodoItem(todo))}
+            </>
+          )}
+
+          {todayTodos.length > 0 && (
+            <>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Today</ThemedText>
+              {todayTodos.map(todo => renderTodoItem(todo))}
+            </>
+          )}
+
+          {upcoming.length > 0 && (
+            <>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Upcoming</ThemedText>
+              {upcoming.map(todo => renderTodoItem(todo))}
+            </>
+          )}
+
+          {noDate.length > 0 && (
+            <>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>No date</ThemedText>
+              {noDate.map(todo => renderTodoItem(todo))}
+            </>
+          )}
         </View>
       )}
 

@@ -13,11 +13,13 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useData } from "@/core/DataContext";
+import { useLoggedFeedback } from "@/core/LoggedFeedbackContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 export function NFCQuickTap() {
   const { theme } = useTheme();
   const { addSymptomEntry } = useData();
+  const { showLogged } = useLoggedFeedback();
   const [modalVisible, setModalVisible] = useState(false);
   const [tapped, setTapped] = useState(false);
   const scale = useSharedValue(1);
@@ -34,6 +36,7 @@ export function NFCQuickTap() {
       withSpring(1, { damping: 15 })
     );
     setTapped(true);
+    showLogged("Symptom Check-in", "activity");
 
     addSymptomEntry({
       mood: 5,

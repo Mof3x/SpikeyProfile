@@ -5,16 +5,19 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { Card } from "@/components/Card";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
 import { useModules } from "@/core/ModuleContext";
 import { useData } from "@/core/DataContext";
+import { useLoggedFeedback } from "@/core/LoggedFeedbackContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useScreenInsets } from "@/hooks/useScreenInsets";
 
 import { SymptomSlider } from "@/modules/SymptomTracker/SymptomSlider";
 import { StarRating } from "@/modules/SymptomTracker/StarRating";
 import { ColorPicker } from "@/modules/SymptomTracker/ColorPicker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 type InputType = "slider" | "stars" | "color";
 
@@ -42,7 +45,8 @@ interface TabItem {
 export default function TrackScreen() {
   const { theme, typography } = useTheme();
   const { isModuleEnabled } = useModules();
-  const { addSymptomEntry, addTodo, logQuickAction, quickLogActions, todos, toggleTodo } = useData();
+  const { addSymptomEntry, addTodo, logQuickAction, quickLogActions, todos, toggleTodo, symptomEntries } = useData();
+  const { showLogged } = useLoggedFeedback();
   const { paddingTop, paddingBottom } = useScreenInsets();
 
   const [activeTab, setActiveTab] = useState(0);
@@ -54,6 +58,8 @@ export default function TrackScreen() {
     executiveDysfunction: 5,
   });
   const [saved, setSaved] = useState(false);
+  const [entryTimestamp, setEntryTimestamp] = useState<Date>(new Date());
+  const [showEntryPicker, setShowEntryPicker] = useState(false);
   const [inputTypes, setInputTypes] = useState<Record<string, InputType>>({
     mood: "slider",
     energy: "slider",
@@ -69,6 +75,7 @@ export default function TrackScreen() {
     { key: "symptoms", label: "Symptoms", icon: "activity" },
     { key: "quicklog", label: "Quick Log", icon: "zap" },
     { key: "todos", label: "To-Dos", icon: "check-square" },
+    { key: "daylogs", label: "Day Logs", icon: "list" },
   ];
 
   const handleValueChange = (key: string, value: number) => {
@@ -79,7 +86,8 @@ export default function TrackScreen() {
   };
 
   const handleSave = () => {
-    addSymptomEntry(values);
+    addSymptomEntry(values, entryTimestamp);
+    showLogged("Symptom entry logged", "activity");
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -90,6 +98,7 @@ export default function TrackScreen() {
   const handleAddTodo = () => {
     if (!newTodoText.trim()) return;
     addTodo(newTodoText.trim());
+    showLogged(`Added: ${newTodoText.trim()}`, "check-square");
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -98,6 +107,13 @@ export default function TrackScreen() {
 
   const handleQuickLog = (actionId: string) => {
     logQuickAction(actionId);
+    
+    // Show feedback for quick log
+    const action = quickLogActions.find(a => a.id === actionId);
+    if (action) {
+      showLogged(action.name, action.icon);
+    }
+    
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -108,6 +124,60 @@ export default function TrackScreen() {
       Haptics.selectionAsync();
     }
     setActiveTab(index);
+  };
+
+  const [selectedLogDay, setSelectedLogDay] = useState<Date>(new Date());
+  const [showLogDayPicker, setShowLogDayPicker] = useState(false);
+
+  const renderDayLogsPage = () => {
+    const day = selectedLogDay;
+    const dayStr = day.toDateString();
+    const entriesForDay = symptomEntries.filter((e) => new Date(e.timestamp).toDateString() === dayStr);
+
+    return (
+      <ScrollView
+        style={styles.pageContainer}
+        contentContainerStyle={[styles.pageContent, { paddingBottom: paddingBottom + Spacing.xl }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
+          <Pressable onPress={() => setShowLogDayPicker(true)} style={{ padding: 8 }}>
+            <ThemedText type="body">{selectedLogDay.toDateString()}</ThemedText>
+          </Pressable>
+        </View>
+
+        {entriesForDay.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.surfaceVariant }]}>
+            <Feather name="list" size={32} color={theme.textSecondary} />
+            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: "center" }}>
+              No logs for this day.
+            </ThemedText>
+          </View>
+        ) : (
+          entriesForDay.map((entry) => (
+            <Card key={entry.id} style={{ marginBottom: Spacing.sm, padding: Spacing.md }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <ThemedText type="body">{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>{`Mood ${entry.mood} · Energy ${entry.energy}`}</ThemedText>
+              </View>
+            </Card>
+          ))
+        )}
+
+        {showLogDayPicker && (
+          <DateTimePicker
+            value={selectedLogDay}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "calendar"}
+            onChange={(event, date) => {
+              setShowLogDayPicker(false);
+              if (date) setSelectedLogDay(date);
+            }}
+            maximumDate={new Date()}
+          />
+        )}
+      </ScrollView>
+    );
   };
 
   if (!isModuleEnabled("symptomTracker")) {
@@ -227,29 +297,81 @@ export default function TrackScreen() {
         Tap to log instantly
       </ThemedText>
 
-      <View style={styles.quickLogGrid}>
-        {quickLogActions.filter((a) => a.enabled).map((action) => (
-          <Pressable
-            key={action.id}
-            onPress={() => handleQuickLog(action.id)}
-            style={({ pressed }) => [
-              styles.quickLogChip,
-              {
-                backgroundColor: pressed ? theme.primary : theme.surfaceVariant,
-              },
-            ]}
-          >
-            <Feather
-              name={action.icon as any || "zap"}
-              size={20}
-              color={theme.primary}
-            />
-            <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: "center" }} numberOfLines={2}>
-              {action.name}
-            </ThemedText>
-          </Pressable>
-        ))}
-      </View>
+      {(() => {
+        const enabled = quickLogActions.filter((a) => a.enabled);
+        const grouped: Record<string, typeof enabled> = { medication: [], habit: [], custom: [] } as any;
+        enabled.forEach((a) => {
+          if (!grouped[a.category]) grouped[a.category] = [];
+          grouped[a.category].push(a);
+        });
+
+        return (
+          <>
+            { (grouped.medication && grouped.medication.length > 0) && (
+              <>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>Medication</ThemedText>
+                <View style={styles.quickLogGrid}>
+                  {grouped.medication.map((action) => (
+                    <Pressable
+                      key={action.id}
+                      onPress={() => handleQuickLog(action.id)}
+                      style={({ pressed }) => [
+                        styles.quickLogChip,
+                        { backgroundColor: pressed ? theme.primary : theme.surfaceVariant },
+                      ]}
+                    >
+                      <Feather name={action.icon as any || "zap"} size={20} color={theme.primary} />
+                      <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: "center" }} numberOfLines={2}>{action.name}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+
+            { (grouped.habit && grouped.habit.length > 0) && (
+              <>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.lg, marginBottom: Spacing.sm }}>Habits</ThemedText>
+                <View style={styles.quickLogGrid}>
+                  {grouped.habit.map((action) => (
+                    <Pressable
+                      key={action.id}
+                      onPress={() => handleQuickLog(action.id)}
+                      style={({ pressed }) => [
+                        styles.quickLogChip,
+                        { backgroundColor: pressed ? theme.primary : theme.surfaceVariant },
+                      ]}
+                    >
+                      <Feather name={action.icon as any || "zap"} size={20} color={theme.primary} />
+                      <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: "center" }} numberOfLines={2}>{action.name}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+
+            { (grouped.custom && grouped.custom.length > 0) && (
+              <>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.lg, marginBottom: Spacing.sm }}>Other</ThemedText>
+                <View style={styles.quickLogGrid}>
+                  {grouped.custom.map((action) => (
+                    <Pressable
+                      key={action.id}
+                      onPress={() => handleQuickLog(action.id)}
+                      style={({ pressed }) => [
+                        styles.quickLogChip,
+                        { backgroundColor: pressed ? theme.primary : theme.surfaceVariant },
+                      ]}
+                    >
+                      <Feather name={action.icon as any || "zap"} size={20} color={theme.primary} />
+                      <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: "center" }} numberOfLines={2}>{action.name}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+          </>
+        );
+      })()}
 
       {quickLogActions.filter((a) => a.enabled).length === 0 ? (
         <View style={[styles.emptyState, { backgroundColor: theme.surfaceVariant }]}>
@@ -359,16 +481,18 @@ export default function TrackScreen() {
     <ThemedView style={[styles.container, { paddingTop }]}>
       <View style={styles.header}>
         <View style={styles.timestampRow}>
-          <Feather name="clock" size={12} color={theme.textSecondary} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
-            {new Date().toLocaleString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-          </ThemedText>
+          <Pressable onPress={() => setShowEntryPicker(true)} style={{ flexDirection: "row", alignItems: "center" }}>
+            <Feather name="clock" size={12} color={theme.textSecondary} />
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
+              {entryTimestamp.toLocaleString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </ThemedText>
+          </Pressable>
         </View>
 
         <View style={styles.tabBar}>
@@ -407,7 +531,21 @@ export default function TrackScreen() {
         {activeTab === 0 ? renderSymptomsPage() : null}
         {activeTab === 1 ? renderQuickLogPage() : null}
         {activeTab === 2 ? renderTodosPage() : null}
+        {activeTab === 3 ? renderDayLogsPage() : null}
       </View>
+
+      {showEntryPicker && (
+        <DateTimePicker
+          value={entryTimestamp}
+          mode="datetime"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, date) => {
+            setShowEntryPicker(false);
+            if (date) setEntryTimestamp(date);
+          }}
+          maximumDate={new Date()}
+        />
+      )}
 
       <Modal
         visible={showInputTypeModal}

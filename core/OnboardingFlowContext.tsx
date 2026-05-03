@@ -40,52 +40,40 @@ export const ONBOARDING_STRENGTH_QUESTIONS: OnboardingQuestion[] = [
     axisId: "patternRecognition",
     title: "Pattern recognition & systems thinking",
     prompt:
-      "When you are dropped into something complex, how quickly do system structure and failure points become clear?",
+      "When dealing with something complex, how quickly can you orient yourself?",
     options: [
-      "I usually follow examples rather than seeing system structure first.",
-      "I can understand parts, but full system mapping takes time.",
-      "I build a rough map and notice some inconsistencies.",
-      "I quickly model the system and spot edge cases early.",
-      "I naturally debug and optimize systems almost immediately.",
+      "I normally need examples.",
+      "I tend to fiind structure.",
     ],
   },
   {
     axisId: "deepFocus",
     title: "Deep focus & specialist mastery",
     prompt:
-      "For topics that genuinely interest you, how consistently can you sustain focus and build depth?",
+      "For genuinely interests, how consistently can you focus?",
     options: [
       "Interest fades quickly, even for topics I like.",
-      "I engage, but usually need external structure to keep momentum.",
-      "I can go deep in bursts, but consistency varies.",
-      "I reliably go deep and sustain progress over time.",
-      "Deep immersion is typical for me, with rapid learning and detail focus.",
+      "Deep immersion is typical for me.",
     ],
   },
   {
     axisId: "creativity",
     title: "Creativity & lateral problem-solving",
     prompt:
-      "When standard approaches fail, how often do you generate non-obvious alternatives?",
+      "When standard approaches fail, how often do you find alternatives?",
     options: [
-      "I prefer known methods and rarely explore alternatives.",
-      "I try small variations near the standard approach.",
-      "I can reframe problems and find alternatives with time.",
-      "I naturally generate multiple valid reframes.",
-      "I regularly make unexpected cross-domain connections.",
+      "I prefer known methods.",
+      "I regularly make unexpected  connections.",
     ],
   },
   {
     axisId: "principledJudgement",
     title: "Bottom-up reasoning & principled judgement",
     prompt:
-      "Under pressure, how much are your decisions driven by evidence/consistency vs social convention?",
+      "How much are your decisions driven by experience vs social convention?",
     options: [
-      "I usually follow the local norm or authority expectation.",
-      "I balance norms with my own view, but default to convention.",
-      "I aim for evidence-led decisions, though context can sway me.",
-      "I am strongly principle and evidence driven.",
-      "Principled consistency is my default, even when unpopular.",
+      "I usually follow the local norm.",
+      "Consistency is my strict default.",
     ],
   },
 ];
@@ -95,12 +83,9 @@ export const ONBOARDING_CHALLENGE_QUESTIONS: OnboardingQuestion[] = [
     axisId: "executiveFunction",
     title: "Executive functioning & self-management",
     prompt:
-      "Even when trying your best, how much effort is spent on planning, starting, switching, sequencing, and finishing?",
+      "How much effort is spent on planning, starting, switching, sequencing, and finishing?",
     options: [
-      "A lot of effort most weeks.",
-      "Some effort, but manageable with light reminders.",
-      "Noticeable effort and frequent friction.",
-      "High effort without a lot of structure.",
+      "Not a lot of effort most weeks.",
       "It is a massive consideration.",
     ],
   },
@@ -108,13 +93,10 @@ export const ONBOARDING_CHALLENGE_QUESTIONS: OnboardingQuestion[] = [
     axisId: "healthWellbeingSafety",
     title: "Health, wellbeing & safety management",
     prompt:
-      "How much effort is required to keep routines, meds, appointments, and safety plans stable?",
+      "How much effort is required to keep routines, appointments, and plans?",
     options: [
       "Mostly automatic and low effort.",
-      "Manageable with light support tools.",
-      "Recurring management task with occasional misses.",
-      "Hard to keep stable; missed steps are common.",
-      "Major ongoing project that needs strong systems/support.",
+      "Needs strong systems/support.",
     ],
   },
   {
@@ -124,23 +106,17 @@ export const ONBOARDING_CHALLENGE_QUESTIONS: OnboardingQuestion[] = [
       "How much do noise, lighting, interruptions, crowds, and unpredictability determine whether you can function?",
     options: [
       "Environment rarely affects my performance.",
-      "Some settings are difficult but usually manageable.",
-      "I need active planning to avoid overload in some contexts.",
-      "Environmental fit is often a deciding factor.",
-      "Wrong conditions can shut down thinking/communication/action.",
+      "Wrong conditions can severely affect my abilities.",
     ],
   },
   {
     axisId: "mobilityNavigationSocial",
     title: "Mobility, navigation & social participation",
     prompt:
-      "How limiting are travel disruption, wayfinding, crowded environments, and communication load in practice?",
+      "How limiting are travel disruption and crowded environments?",
     options: [
-      "Rarely limiting; I adapt quickly.",
-      "Mildly limiting; planning helps but changes are manageable.",
-      "Moderately limiting; I avoid some contexts or need prep.",
-      "Strongly limiting; disruptions and interaction load derail plans.",
-      "Core barrier requiring major support and recovery.",
+      "Rarely limiting, I adapt quickly.",
+      "Core barrier requiring major support and preparation.",
     ],
   },
 ];
