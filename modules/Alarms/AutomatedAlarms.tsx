@@ -199,7 +199,7 @@ export function AutomatedAlarms() {
     const stepDays = schedule.recurrenceUnit === "weeks" ? every * 7 : every;
     const limit = schedule.recurrenceEndDate
       ? new Date(schedule.recurrenceEndDate)
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
 
     for (let d = new Date(baseDate); d <= limit; d.setDate(d.getDate() + stepDays)) {
       dates.push(new Date(d));

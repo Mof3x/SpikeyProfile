@@ -65,6 +65,7 @@ export default function CalendarScreen() {
     removeCalendarEvent, 
     symptomEntries,
     quickLogEntries,
+    removeQuickLogEntry,
     todos,
     alarmSchedules,
   } = useData();
@@ -248,6 +249,13 @@ export default function CalendarScreen() {
     });
   };
 
+  const openAddEventModal = (presetDate?: Date) => {
+    if (presetDate) {
+      setNewEventDate(presetDate);
+    }
+    setShowAddModal(true);
+  };
+
   const handleAddEvent = () => {
     if (newEventTitle.trim()) {
       addCalendarEvent({
@@ -282,6 +290,12 @@ export default function CalendarScreen() {
           <ThemedText type="h3">
             {MONTHS[currentMonth]} {currentYear}
           </ThemedText>
+          <Pressable
+            onPress={() => openAddEventModal(selectedDate || new Date())}
+            style={[styles.addHeaderButton, { backgroundColor: theme.primary }]}
+          >
+            <Feather name="plus" size={16} color="#FFFFFF" />
+          </Pressable>
           <Pressable onPress={handleNextMonth} style={styles.navButton}>
             <Feather name="chevron-right" size={24} color={theme.text} />
           </Pressable>
@@ -384,12 +398,7 @@ export default function CalendarScreen() {
           );
         })}
         <Pressable
-          onPress={() => {
-            if (selectedDate) {
-              setNewEventDate(selectedDate);
-            }
-            setShowAddModal(true);
-          }}
+          onPress={() => openAddEventModal(selectedDate || new Date())}
           style={[styles.addEventButton, { backgroundColor: theme.primary }]}
         >
           <Feather name="plus" size={18} color="#FFFFFF" />
@@ -408,6 +417,15 @@ export default function CalendarScreen() {
                 day: "numeric",
               })}
             </ThemedText>
+            <Pressable
+              onPress={() => openAddEventModal(selectedDate)}
+              style={[styles.addInlineButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="plus" size={14} color="#FFFFFF" />
+              <ThemedText type="caption" style={{ color: "#FFFFFF", marginLeft: 6 }}>
+                Add
+              </ThemedText>
+            </Pressable>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {filteredItems.length} item{filteredItems.length !== 1 ? "s" : ""}
             </ThemedText>
@@ -452,6 +470,16 @@ export default function CalendarScreen() {
                       onPress={() => {
                         const eventId = item.id.replace("event-", "");
                         removeCalendarEvent(eventId);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                    >
+                      <Feather name="trash-2" size={16} color={theme.textSecondary} />
+                    </Pressable>
+                  ) : item.id.startsWith("log-") ? (
+                    <Pressable
+                      onPress={() => {
+                        const logId = item.id.replace("log-", "");
+                        removeQuickLogEntry(logId);
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
                     >
@@ -610,6 +638,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.lg,
   },
+  addHeaderButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   navButton: {
     padding: Spacing.sm,
   },
@@ -671,6 +706,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.md,
+  },
+  addInlineButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
   },
   emptyState: {
     paddingVertical: Spacing.xl,

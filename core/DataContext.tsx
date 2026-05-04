@@ -249,6 +249,7 @@ interface DataContextType {
   toggleQuickLogAction: (id: string) => void;
   quickLogEntries: QuickLogEntry[];
   logQuickAction: (actionId: string) => void;
+  removeQuickLogEntry: (id: string) => void;
   emergencyContacts: EmergencyContact[];
   addEmergencyContact: (contact: Omit<EmergencyContact, "id">) => void;
   removeEmergencyContact: (id: string) => void;
@@ -979,6 +980,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, [quickLogActions, saveToStorage]);
 
+  const removeQuickLogEntry = useCallback((id: string) => {
+    setQuickLogEntries((prev) => {
+      const updated = prev.filter((entry) => entry.id !== id);
+      saveToStorage(STORAGE_KEYS.quickLogEntries, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
   const addEmergencyContact = useCallback((contact: Omit<EmergencyContact, "id">) => {
     setEmergencyContacts((prev) => {
       const newContact: EmergencyContact = { ...contact, id: Date.now().toString() };
@@ -1216,6 +1225,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         toggleQuickLogAction,
         quickLogEntries,
         logQuickAction,
+        removeQuickLogEntry,
         emergencyContacts,
         addEmergencyContact,
         removeEmergencyContact,

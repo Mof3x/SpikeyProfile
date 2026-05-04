@@ -23,6 +23,8 @@ export function CountdownTimerCard() {
   const { theme, typography } = useTheme();
   const { countdownTimers, addCountdownTimer, updateCountdownTimer, removeCountdownTimer } = useData();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTimer, setEditingTimer] = useState<CountdownTimer | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [newName, setNewName] = useState("");
@@ -127,6 +129,52 @@ export function CountdownTimerCard() {
     removeCountdownTimer(id);
   };
 
+  const handleEditTimer = (timer: CountdownTimer) => {
+    setEditingTimer(timer);
+    setNewName(timer.name);
+    setNewCategory(timer.category);
+    setNewTargetDate(new Date(timer.targetDate));
+    setNewRecurrenceEnabled(!!timer.recurrenceEnabled);
+    setNewRecurrenceEvery(String(timer.recurrenceEvery || 1));
+    setNewRecurrenceUnit(timer.recurrenceUnit || "days");
+    setNewRecurrenceHasEndDate(!!timer.recurrenceEndDate);
+    setNewRecurrenceEndDate(timer.recurrenceEndDate ? new Date(timer.recurrenceEndDate) : new Date());
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingTimer || !newName.trim()) return;
+    if (newRecurrenceEnabled && newRecurrenceHasEndDate && newRecurrenceEndDate < newTargetDate) {
+      Alert.alert("Check recurrence", "The recurrence end date should be after the target date.");
+      return;
+    }
+
+    const recurrenceEvery = Math.max(1, parseInt(newRecurrenceEvery || "1", 10));
+    updateCountdownTimer(editingTimer.id, {
+      name: newName.trim(),
+      targetDate: newTargetDate,
+      category: newCategory,
+      icon: CATEGORY_CONFIG[newCategory].icon,
+      color: CATEGORY_CONFIG[newCategory].color,
+      recurrenceEnabled: newRecurrenceEnabled,
+      recurrenceEvery,
+      recurrenceUnit: newRecurrenceUnit,
+      recurrenceEndDate: newRecurrenceHasEndDate ? newRecurrenceEndDate : null,
+    });
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowEditModal(false);
+    setEditingTimer(null);
+    setNewName("");
+    setNewCategory("event");
+    setNewTargetDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    setNewRecurrenceEnabled(false);
+    setNewRecurrenceEvery("1");
+    setNewRecurrenceUnit("days");
+    setNewRecurrenceHasEndDate(false);
+    setNewRecurrenceEndDate(new Date());
+  };
+
   const formatTimeUnit = (value: number, label: string) => {
     return `${value}${label}`;
   };
@@ -167,7 +215,11 @@ export function CountdownTimerCard() {
               const config = CATEGORY_CONFIG[timer.category];
               
               return (
-                <View key={timer.id} style={[styles.timerItem, { backgroundColor: theme.surfaceVariant }]}>
+                <Pressable
+                  key={timer.id}
+                  onPress={() => handleEditTimer(timer)}
+                  style={[styles.timerItem, { backgroundColor: theme.surfaceVariant }]}
+                >
                   <View style={styles.timerLeft}>
                     <View style={[styles.timerIcon, { backgroundColor: config.color + "20" }]}>
                       <Feather name={config.icon as any} size={16} color={config.color} />
@@ -199,7 +251,7 @@ export function CountdownTimerCard() {
                   <Pressable onPress={() => handleRemoveTimer(timer.id)} hitSlop={8}>
                     <Feather name="x" size={18} color={theme.textSecondary} />
                   </Pressable>
-                </View>
+                </Pressable>
               );
             })}
             {enabledTimers.length > 3 && (
