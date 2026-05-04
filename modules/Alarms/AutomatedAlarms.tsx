@@ -24,25 +24,6 @@ Notifications.setNotificationHandler({
 export function AutomatedAlarms() {
   const { theme, typography } = useTheme();
   const { alarmSchedules, addAlarmSchedule, updateAlarmSchedule, removeAlarmSchedule, toggleAlarmSchedule } = useData();
-  
-  recurrenceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  recurrenceInput: {
-    width: 64,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    textAlign: "center",
-  },
-  recurrenceUnitButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<AlarmSchedule | null>(null);
@@ -986,6 +967,24 @@ const styles = StyleSheet.create({
   optionInfo: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  recurrenceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  recurrenceInput: {
+    width: 64,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    textAlign: "center",
+  },
+  recurrenceUnitButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   saveButton: {
     margin: 20,

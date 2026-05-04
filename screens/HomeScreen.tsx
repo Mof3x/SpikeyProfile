@@ -27,12 +27,20 @@ import { AutomatedAlarms } from "@/modules/Alarms/AutomatedAlarms";
 import { CountdownTimerCard } from "@/modules/Timers/CountdownTimerCard";
 import { CountUpTimerCard } from "@/modules/Timers/CountUpTimerCard";
 
-interface WidgetConfig {
-  id: WidgetId;
-  name: string;
-  icon: string;
-  component: React.ReactNode | null;
-}
+const WIDGET_META: Record<WidgetId, { name: string; icon: string }> = {
+  gamification: { name: "Progress & XP", icon: "award" },
+  symptomTracker: { name: "Today's Summary", icon: "activity" },
+  todoList: { name: "To-Do List", icon: "check-square" },
+  calendar: { name: "Upcoming Events", icon: "calendar" },
+  nfcModule: { name: "Quick Log", icon: "smartphone" },
+  pomodoro: { name: "Focus Timer", icon: "clock" },
+  alarms: { name: "Automated Alarms", icon: "bell" },
+  clipboardTray: { name: "Clipboard Tray", icon: "clipboard" },
+  patternInsights: { name: "Pattern Insights", icon: "bar-chart-2" },
+  emergency: { name: "Emergency", icon: "alert-circle" },
+  countdown: { name: "Countdown Timer", icon: "clock" },
+  countup: { name: "Time Since...", icon: "activity" },
+};
 
 function WidgetReorderModal({
   visible,
@@ -49,21 +57,6 @@ function WidgetReorderModal({
 }) {
   const { theme } = useTheme();
   const [tempOrder, setTempOrder] = useState<WidgetId[]>(widgetOrder);
-
-  const widgetNames: Record<WidgetId, { name: string; icon: string }> = {
-    gamification: { name: "Progress & XP", icon: "award" },
-    symptomTracker: { name: "Today's Summary", icon: "activity" },
-    todoList: { name: "To-Do List", icon: "check-square" },
-    calendar: { name: "Upcoming Events", icon: "calendar" },
-    nfcModule: { name: "Quick Log", icon: "smartphone" },
-    pomodoro: { name: "Focus Timer", icon: "clock" },
-    alarms: { name: "Automated Alarms", icon: "bell" },
-    clipboardTray: { name: "Clipboard Tray", icon: "clipboard" },
-    patternInsights: { name: "Pattern Insights", icon: "bar-chart-2" },
-    emergency: { name: "Emergency", icon: "alert-circle" },
-    countdown: { name: "Countdown Timer", icon: "clock" },
-    countup: { name: "Time Since...", icon: "activity" },
-  };
 
   const moveWidget = (index: number, direction: "up" | "down") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -108,7 +101,7 @@ function WidgetReorderModal({
 
           <View style={styles.widgetList}>
             {tempOrder.map((widgetId, index) => {
-              const widget = widgetNames[widgetId];
+              const widget = WIDGET_META[widgetId];
               const isEnabled = enabledModules.has(widgetId);
               
               return (
@@ -185,6 +178,9 @@ export default function HomeScreen() {
   const { isModuleEnabled } = useModules();
   const { userName, symptomEntries, widgetOrder, setWidgetOrder } = useData();
   const [showReorderModal, setShowReorderModal] = useState(false);
+  const [collapsedWidgets, setCollapsedWidgets] = useState<
+    Partial<Record<WidgetId, boolean>>
+  >({});
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -257,6 +253,14 @@ export default function HomeScreen() {
     }
   }, [isWidgetModuleEnabled, todayEntry]);
 
+  const toggleWidgetCollapse = (widgetId: WidgetId) => {
+    Haptics.selectionAsync();
+    setCollapsedWidgets((prev) => ({
+      ...prev,
+      [widgetId]: !prev[widgetId],
+    }));
+  };
+
   return (
     <ScreenScrollView>
       <View style={styles.header}>
@@ -302,9 +306,43 @@ export default function HomeScreen() {
       {widgetOrder.map((widgetId) => {
         const widget = renderWidget(widgetId);
         if (!widget) return null;
+        const meta = WIDGET_META[widgetId];
+        const isCollapsed = collapsedWidgets[widgetId];
         return (
           <React.Fragment key={widgetId}>
-            {widget}
+            <Pressable
+              onPress={() => toggleWidgetCollapse(widgetId)}
+              style={({ pressed }) => [
+                styles.widgetSectionHeader,
+                {
+                  backgroundColor: theme.surfaceVariant,
+                  borderColor: theme.divider,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <View style={styles.widgetSectionLeft}>
+                <View
+                  style={[
+                    styles.widgetSectionIcon,
+                    { backgroundColor: theme.primary + "1A" },
+                  ]}
+                >
+                  <Feather name={meta.icon as any} size={16} color={theme.primary} />
+                </View>
+                <ThemedText type="body" style={styles.widgetSectionTitle}>
+                  {meta.name}
+                </ThemedText>
+              </View>
+              <Feather
+                name={isCollapsed ? "chevron-right" : "chevron-down"}
+                size={18}
+                color={theme.textSecondary}
+              />
+            </Pressable>
+            {!isCollapsed ? (
+              <View style={styles.widgetSectionBody}>{widget}</View>
+            ) : null}
             <Spacer height={Spacing.lg} />
           </React.Fragment>
         );
@@ -351,6 +389,33 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
+  },
+  widgetSectionHeader: {
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  widgetSectionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  widgetSectionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  widgetSectionTitle: {
+    fontWeight: "600",
+  },
+  widgetSectionBody: {
+    marginTop: Spacing.sm,
   },
   modalOverlay: {
     flex: 1,

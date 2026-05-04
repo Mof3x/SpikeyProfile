@@ -64,7 +64,9 @@ export default function CalendarScreen() {
     addCalendarEvent, 
     removeCalendarEvent, 
     symptomEntries,
+    removeSymptomEntry,
     quickLogEntries,
+    addQuickLogEntry,
     removeQuickLogEntry,
     todos,
     alarmSchedules,
@@ -75,7 +77,7 @@ export default function CalendarScreen() {
   const [activeFilters, setActiveFilters] = useState<Set<FilterType>>(new Set(["all"]));
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState("");
-  const [newEventType, setNewEventType] = useState<"reminders" | "events">("events");
+  const [newEventType, setNewEventType] = useState<"reminders" | "events" | "logs">("events");
   const [newEventDate, setNewEventDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -257,17 +259,22 @@ export default function CalendarScreen() {
   };
 
   const handleAddEvent = () => {
-    if (newEventTitle.trim()) {
+    if (!newEventTitle.trim()) return;
+
+    if (newEventType === "logs") {
+      addQuickLogEntry(newEventTitle.trim(), newEventDate);
+    } else {
       addCalendarEvent({
         title: newEventTitle.trim(),
         date: newEventDate,
         type: newEventType === "events" ? "event" : "reminder",
         recurring: null,
       });
-      setNewEventTitle("");
-      setShowAddModal(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+
+    setNewEventTitle("");
+    setShowAddModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const filters: { id: FilterType; label: string; icon: string; color: string }[] = [
@@ -485,6 +492,16 @@ export default function CalendarScreen() {
                     >
                       <Feather name="trash-2" size={16} color={theme.textSecondary} />
                     </Pressable>
+                  ) : item.id.startsWith("symptom-") ? (
+                    <Pressable
+                      onPress={() => {
+                        const symptomId = item.id.replace("symptom-", "");
+                        removeSymptomEntry(symptomId);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                    >
+                      <Feather name="trash-2" size={16} color={theme.textSecondary} />
+                    </Pressable>
                   ) : null}
                 </View>
               ))}
@@ -584,6 +601,25 @@ export default function CalendarScreen() {
                   style={{ color: newEventType === "reminders" ? "#FFFFFF" : theme.text }}
                 >
                   Reminder
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => setNewEventType("logs")}
+                style={[
+                  styles.typeButton,
+                  { backgroundColor: newEventType === "logs" ? theme.success : theme.surfaceVariant },
+                ]}
+              >
+                <Feather
+                  name="check-circle"
+                  size={16}
+                  color={newEventType === "logs" ? "#FFFFFF" : theme.text}
+                />
+                <ThemedText
+                  type="small"
+                  style={{ color: newEventType === "logs" ? "#FFFFFF" : theme.text }}
+                >
+                  Log
                 </ThemedText>
               </Pressable>
             </View>

@@ -3,6 +3,7 @@ import {
   StyleSheet,
   View,
   Pressable,
+  Image,
   Switch,
   TextInput,
   Alert,
@@ -11,11 +12,13 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import Spacer from "@/components/Spacer";
 import { NFCHowToGuide } from "@/components/NFCHowToGuide";
+import { OnboardingAxisProfileChart } from "@/components/OnboardingAxisProfileChart";
 import { useTheme } from "@/hooks/useTheme";
 import { useThemeContext, ThemeId, FontSize } from "@/core/ThemeContext";
 import { useModules, ModuleConfig } from "@/core/ModuleContext";
@@ -25,23 +28,46 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 function SettingsSection({
   title,
   children,
+  defaultCollapsed = false,
 }: {
   title: string;
   children: React.ReactNode;
+  defaultCollapsed?: boolean;
 }) {
   const { theme } = useTheme();
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   return (
     <View style={styles.section}>
-      <ThemedText
-        type="small"
-        style={[styles.sectionTitle, { color: theme.textSecondary }]}
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync();
+          setCollapsed((prev) => !prev);
+        }}
+        style={({ pressed }) => [
+          styles.sectionHeader,
+          { opacity: pressed ? 0.7 : 1 },
+        ]}
       >
-        {title}
-      </ThemedText>
-      <Spacer height={Spacing.sm} />
-      <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
-        {children}
-      </View>
+        <ThemedText
+          type="small"
+          style={[styles.sectionTitle, { color: theme.textSecondary }]}
+        >
+          {title}
+        </ThemedText>
+        <Feather
+          name={collapsed ? "chevron-right" : "chevron-down"}
+          size={16}
+          color={theme.textSecondary}
+        />
+      </Pressable>
+      {!collapsed ? (
+        <>
+          <Spacer height={Spacing.sm} />
+          <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
+            {children}
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -493,6 +519,8 @@ export default function SettingsScreen() {
   const {
     userName,
     setUserName,
+    profileImageUri,
+    setProfileImageUri,
     userStats,
     onboardingProfile,
     setOnboardingComplete,
@@ -506,6 +534,46 @@ export default function SettingsScreen() {
     setUserName(nameInput);
     setEditingName(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handlePickProfilePhoto = async () => {
+    Haptics.selectionAsync();
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Photo access needed",
+        "Allow photo library access to set your profile picture.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets?.length) {
+      setProfileImageUri(result.assets[0].uri);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleRemoveProfilePhoto = () => {
+    if (!profileImageUri) return;
+    Alert.alert(
+      "Remove profile photo?",
+      "This will restore the default avatar.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => setProfileImageUri(null),
+        },
+      ],
+    );
   };
 
   const handleToggleDarkMode = () => {
@@ -586,9 +654,22 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate("Profile")}
         />
         <View style={styles.profileSection}>
-          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-            <Feather name="user" size={32} color="#FFFFFF" />
-          </View>
+          <Pressable
+            onPress={handlePickProfilePhoto}
+            style={({ pressed }) => [
+              styles.avatar,
+              { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            {profileImageUri ? (
+              <Image source={{ uri: profileImageUri }} style={styles.avatarImage} />
+            ) : (
+              <Feather name="user" size={32} color="#FFFFFF" />
+            )}
+            <View style={[styles.avatarBadge, { backgroundColor: theme.surface }]}>
+              <Feather name="camera" size={14} color={theme.primary} />
+            </View>
+          </Pressable>
           <Spacer height={Spacing.md} />
           {editingName ? (
             <View style={styles.nameInputContainer}>
@@ -631,8 +712,29 @@ export default function SettingsScreen() {
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
             Level {userStats.level} | {userStats.xp} XP
           </ThemedText>
+          <Spacer height={Spacing.xs} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Tap avatar to change photo
+          </ThemedText>
+          {profileImageUri ? (
+            <Pressable
+              onPress={handleRemoveProfilePhoto}
+              style={({ pressed }) => [styles.removePhotoButton, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Feather name="trash-2" size={14} color={theme.error} />
+              <ThemedText type="caption" style={{ color: theme.error }}>
+                Remove photo
+              </ThemedText>
+            </Pressable>
+          ) : null}
         </View>
       </SettingsSection>
+
+      {onboardingProfile ? (
+        <SettingsSection title="ONBOARDING RESULTS">
+          <OnboardingAxisProfileChart scores={onboardingProfile.axisScores} />
+        </SettingsSection>
+      ) : null}
 
       <SettingsSection title="APPEARANCE">
         <View style={styles.appearanceContent}>
@@ -815,6 +917,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontWeight: "600",
     letterSpacing: 0.5,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.xs,
   },
   sectionContent: {
@@ -858,6 +965,22 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   nameContainer: {
     flexDirection: "row",
@@ -876,6 +999,12 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.lg,
     textAlign: "center",
+  },
+  removePhotoButton: {
+    marginTop: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
   },
   saveNameButton: {
     width: Spacing.inputHeight,

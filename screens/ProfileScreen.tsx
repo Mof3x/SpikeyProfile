@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, Pressable } from "react-native";
+import { StyleSheet, View, Pressable, Image } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
@@ -15,7 +15,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
-  const { userName, userStats } = useData();
+  const { userName, userStats, profileImageUri } = useData();
 
   const displayName = userName || "Your profile";
 
@@ -29,7 +29,11 @@ export default function ProfileScreen() {
       <Card style={styles.profileCard}>
         <View style={styles.profileHeader}>
           <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-            <Feather name="user" size={32} color="#FFFFFF" />
+            {profileImageUri ? (
+              <Image source={{ uri: profileImageUri }} style={styles.avatarImage} />
+            ) : (
+              <Feather name="user" size={32} color="#FFFFFF" />
+            )}
           </View>
           <View style={styles.profileInfo}>
             <ThemedText type="h3">{displayName}</ThemedText>
@@ -97,6 +101,11 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   profileInfo: {
     flex: 1,

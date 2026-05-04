@@ -223,6 +223,7 @@ export const DEFAULT_WIDGET_ORDER: WidgetId[] = [
 interface DataContextType {
   symptomEntries: SymptomEntry[];
   addSymptomEntry: (entry: Omit<SymptomEntry, "id" | "timestamp">, timestamp?: Date) => void;
+  removeSymptomEntry: (id: string) => void;
   clipboardItems: ClipboardItem[];
   addClipboardItem: (text: string) => void;
   removeClipboardItem: (id: string) => void;
@@ -249,6 +250,7 @@ interface DataContextType {
   toggleQuickLogAction: (id: string) => void;
   quickLogEntries: QuickLogEntry[];
   logQuickAction: (actionId: string) => void;
+  addQuickLogEntry: (actionName: string, timestamp?: Date) => void;
   removeQuickLogEntry: (id: string) => void;
   emergencyContacts: EmergencyContact[];
   addEmergencyContact: (contact: Omit<EmergencyContact, "id">) => void;
@@ -271,6 +273,8 @@ interface DataContextType {
   insights: PatternInsight[];
   userName: string;
   setUserName: (name: string) => void;
+  profileImageUri: string | null;
+  setProfileImageUri: (uri: string | null) => void;
   widgetOrder: WidgetId[];
   setWidgetOrder: (order: WidgetId[]) => void;
   lowSensorySettings: LowSensorySettings;
@@ -315,6 +319,7 @@ const STORAGE_KEYS = {
   alarmSchedules: "@spikeyprofile/alarmSchedules",
   userStats: "@spikeyprofile/userStats",
   userName: "@spikeyprofile/userName",
+  profileImageUri: "@spikeyprofile/profileImageUri",
   widgetOrder: "@spikeyprofile/widgetOrder",
   medicalInfo: "@spikeyprofile/medicalInfo",
   crisisScripts: "@spikeyprofile/crisisScripts",
@@ -526,6 +531,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const [insights] = useState<PatternInsight[]>(DEFAULT_INSIGHTS);
   const [userName, setUserNameState] = useState("");
+  const [profileImageUri, setProfileImageUriState] = useState<string | null>(null);
   const [widgetOrder, setWidgetOrderState] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
 
   useEffect(() => {
@@ -555,6 +561,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setOnboardingProfileState(null);
     setUserStats(INITIAL_STATS);
     setUserNameState("");
+    setProfileImageUriState(null);
     setWidgetOrderState(DEFAULT_WIDGET_ORDER);
   }, []);
 
@@ -616,6 +623,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedAlarms,
         storedStats,
         storedName,
+        storedProfileImageUri,
         storedWidgetOrder,
         storedMedicalInfo,
         storedCrisisScripts,
@@ -640,6 +648,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.alarmSchedules),
         AsyncStorage.getItem(STORAGE_KEYS.userStats),
         AsyncStorage.getItem(STORAGE_KEYS.userName),
+        AsyncStorage.getItem(STORAGE_KEYS.profileImageUri),
         AsyncStorage.getItem(STORAGE_KEYS.widgetOrder),
         AsyncStorage.getItem(STORAGE_KEYS.medicalInfo),
         AsyncStorage.getItem(STORAGE_KEYS.crisisScripts),
@@ -665,6 +674,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (storedAlarms) setAlarmSchedules(deserializeData(storedAlarms));
       if (storedStats) setUserStats(deserializeData(storedStats));
       if (storedName) setUserNameState(storedName);
+      if (storedProfileImageUri !== null) {
+        setProfileImageUriState(
+          storedProfileImageUri && storedProfileImageUri !== "null"
+            ? storedProfileImageUri
+            : null,
+        );
+      }
       
       if (storedWidgetOrder) {
         try {
@@ -787,6 +803,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         lastEntryDate: today,
       };
       saveToStorage(STORAGE_KEYS.userStats, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeSymptomEntry = useCallback((id: string) => {
+    setSymptomEntries((prev) => {
+      const updated = prev.filter((entry) => entry.id !== id);
+      saveToStorage(STORAGE_KEYS.symptomEntries, updated);
       return updated;
     });
   }, [saveToStorage]);
@@ -980,6 +1004,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, [quickLogActions, saveToStorage]);
 
+  const addQuickLogEntry = useCallback((actionName: string, timestamp?: Date) => {
+    if (!actionName.trim()) return;
+    setQuickLogEntries((prev) => {
+      const newEntry: QuickLogEntry = {
+        id: Date.now().toString(),
+        actionId: "manual",
+        actionName: actionName.trim(),
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
+      };
+      const updated = [newEntry, ...prev];
+      saveToStorage(STORAGE_KEYS.quickLogEntries, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
   const removeQuickLogEntry = useCallback((id: string) => {
     setQuickLogEntries((prev) => {
       const updated = prev.filter((entry) => entry.id !== id);
@@ -1021,6 +1060,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const setUserName = useCallback((name: string) => {
     setUserNameState(name);
     saveToStorage(STORAGE_KEYS.userName, name);
+  }, [saveToStorage]);
+
+  const setProfileImageUri = useCallback((uri: string | null) => {
+    setProfileImageUriState(uri);
+    saveToStorage(STORAGE_KEYS.profileImageUri, uri ?? "");
   }, [saveToStorage]);
 
   const setWidgetOrder = useCallback((order: WidgetId[]) => {
@@ -1199,6 +1243,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       value={{
         symptomEntries,
         addSymptomEntry,
+        removeSymptomEntry,
         clipboardItems,
         addClipboardItem,
         removeClipboardItem,
@@ -1225,6 +1270,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         toggleQuickLogAction,
         quickLogEntries,
         logQuickAction,
+        addQuickLogEntry,
         removeQuickLogEntry,
         emergencyContacts,
         addEmergencyContact,
@@ -1247,6 +1293,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         insights,
         userName,
         setUserName,
+        profileImageUri,
+        setProfileImageUri,
         widgetOrder,
         setWidgetOrder,
         lowSensorySettings,
