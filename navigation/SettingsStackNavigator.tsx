@@ -2,11 +2,13 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import SettingsScreen from "@/screens/SettingsScreen";
+import ProfileScreen from "@/screens/ProfileScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { getCommonScreenOptions } from "@/navigation/screenOptions";
 
 export type SettingsStackParamList = {
   Settings: undefined;
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -23,6 +25,13 @@ export default function SettingsStackNavigator() {
         component={SettingsScreen}
         options={{
           title: "Settings",
+        }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: "Profile",
         }}
       />
     </Stack.Navigator>

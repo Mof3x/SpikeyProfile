@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 
 import { ScreenScrollView } from "@/components/ScreenScrollView";
@@ -486,6 +487,7 @@ function DeviceStorageSettings() {
 
 export default function SettingsScreen() {
   const { theme, typography } = useTheme();
+  const navigation = useNavigation<any>();
   const { isDark, setIsDark } = useThemeContext();
   const { modules, resetToDefaults } = useModules();
   const {
@@ -577,6 +579,12 @@ export default function SettingsScreen() {
       <Spacer height={Spacing.md} />
 
       <SettingsSection title="PROFILE">
+        <SettingsRow
+          icon="user"
+          label="Profile"
+          description="Always-accessible profile, graphs, and results"
+          onPress={() => navigation.navigate("Profile")}
+        />
         <View style={styles.profileSection}>
           <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
             <Feather name="user" size={32} color="#FFFFFF" />

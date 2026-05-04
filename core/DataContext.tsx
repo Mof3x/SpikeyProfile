@@ -275,6 +275,10 @@ interface DataContextType {
   updateCountUpTimer: (id: string, timer: Partial<CountUpTimer>) => void;
   removeCountUpTimer: (id: string) => void;
   resetCountUpTimer: (id: string) => void;
+  groupQuickLogs: boolean;
+  setGroupQuickLogs: (enabled: boolean) => void;
+  groupTodos: boolean;
+  setGroupTodos: (enabled: boolean) => void;
   onboardingComplete: boolean;
   setOnboardingComplete: (complete: boolean) => void;
   onboardingProfile: OnboardingProfile | null;
@@ -308,6 +312,8 @@ const STORAGE_KEYS = {
   lowSensorySettings: "@spikeyprofile/lowSensorySettings",
   countdownTimers: "@spikeyprofile/countdownTimers",
   countUpTimers: "@spikeyprofile/countUpTimers",
+  groupQuickLogs: "@spikeyprofile/groupQuickLogs",
+  groupTodos: "@spikeyprofile/groupTodos",
   onboardingComplete: "@spikeyprofile/onboardingComplete",
   onboardingProfile: "@spikeyprofile/onboardingProfile",
   deviceStorageEnabled: "@spikeyprofile/deviceStorageEnabled",
@@ -497,6 +503,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [alarmSchedules, setAlarmSchedules] = useState<AlarmSchedule[]>([]);
   const [countdownTimers, setCountdownTimers] = useState<CountdownTimer[]>([]);
   const [countUpTimers, setCountUpTimers] = useState<CountUpTimer[]>([]);
+  const [groupQuickLogs, setGroupQuickLogsState] = useState(true);
+  const [groupTodos, setGroupTodosState] = useState(true);
   const [onboardingComplete, setOnboardingCompleteState] = useState(false);
   const [onboardingProfile, setOnboardingProfileState] = useState<OnboardingProfile | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({
@@ -532,6 +540,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setAlarmSchedules([]);
     setCountdownTimers([]);
     setCountUpTimers([]);
+    setGroupQuickLogsState(true);
+    setGroupTodosState(true);
     setOnboardingCompleteState(false);
     setOnboardingProfileState(null);
     setUserStats(INITIAL_STATS);
@@ -603,6 +613,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedLowSensory,
         storedCountdownTimers,
         storedCountUpTimers,
+        storedGroupQuickLogs,
+        storedGroupTodos,
         storedOnboardingComplete,
         storedOnboardingProfile,
       ] = await Promise.all([
@@ -625,6 +637,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.lowSensorySettings),
         AsyncStorage.getItem(STORAGE_KEYS.countdownTimers),
         AsyncStorage.getItem(STORAGE_KEYS.countUpTimers),
+        AsyncStorage.getItem(STORAGE_KEYS.groupQuickLogs),
+        AsyncStorage.getItem(STORAGE_KEYS.groupTodos),
         AsyncStorage.getItem(STORAGE_KEYS.onboardingComplete),
         AsyncStorage.getItem(STORAGE_KEYS.onboardingProfile),
       ]);
@@ -697,6 +711,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } catch {
           setCountUpTimers([]);
         }
+      }
+
+      if (storedGroupQuickLogs !== null) {
+        setGroupQuickLogsState(storedGroupQuickLogs === "true");
+      }
+
+      if (storedGroupTodos !== null) {
+        setGroupTodosState(storedGroupTodos === "true");
       }
 
       if (storedOnboardingComplete !== null) {
@@ -989,6 +1011,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     saveToStorage(STORAGE_KEYS.widgetOrder, JSON.stringify(order));
   }, [saveToStorage]);
 
+  const setGroupQuickLogs = useCallback((enabled: boolean) => {
+    setGroupQuickLogsState(enabled);
+    saveToStorage(STORAGE_KEYS.groupQuickLogs, enabled.toString());
+  }, [saveToStorage]);
+
+  const setGroupTodos = useCallback((enabled: boolean) => {
+    setGroupTodosState(enabled);
+    saveToStorage(STORAGE_KEYS.groupTodos, enabled.toString());
+  }, [saveToStorage]);
+
   const setMedicalInfo = useCallback((info: MedicalInfo) => {
     setMedicalInfoState(info);
     saveToStorage(STORAGE_KEYS.medicalInfo, JSON.stringify(info));
@@ -1210,6 +1242,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateCountUpTimer,
         removeCountUpTimer,
         resetCountUpTimer,
+        groupQuickLogs,
+        setGroupQuickLogs,
+        groupTodos,
+        setGroupTodos,
         onboardingComplete,
         setOnboardingComplete,
         onboardingProfile,

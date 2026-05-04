@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, TextInput } from "react-native";
+import { StyleSheet, View, Pressable, TextInput, Switch } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -12,7 +12,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 
 export function TodoWidget() {
   const { theme, typography } = useTheme();
-  const { todos, addTodo, toggleTodo, removeTodo } = useData();
+  const { todos, addTodo, toggleTodo, removeTodo, groupTodos, setGroupTodos } = useData();
   const { showLogged } = useLoggedFeedback();
   const [isAdding, setIsAdding] = useState(false);
   const [newTodoText, setNewTodoText] = useState("");
@@ -95,6 +95,15 @@ export function TodoWidget() {
           </View>
           <ThemedText type="h4">To-Do</ThemedText>
         </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Sections</ThemedText>
+          <Switch
+            value={groupTodos}
+            onValueChange={setGroupTodos}
+            trackColor={{ false: theme.backgroundTertiary, true: theme.primary }}
+            thumbColor={theme.surface}
+          />
+        </View>
         <Pressable
           onPress={() => setIsAdding(!isAdding)}
           style={({ pressed }) => [
@@ -141,32 +150,38 @@ export function TodoWidget() {
         </View>
       ) : (
         <View style={styles.todoList}>
-          {overdue.length > 0 && (
+          {groupTodos ? (
             <>
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>Overdue</ThemedText>
-              {overdue.map(todo => renderTodoItem(todo))}
-            </>
-          )}
+              {overdue.length > 0 && (
+                <>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>Overdue</ThemedText>
+                  {overdue.map(todo => renderTodoItem(todo))}
+                </>
+              )}
 
-          {todayTodos.length > 0 && (
-            <>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Today</ThemedText>
-              {todayTodos.map(todo => renderTodoItem(todo))}
-            </>
-          )}
+              {todayTodos.length > 0 && (
+                <>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Today</ThemedText>
+                  {todayTodos.map(todo => renderTodoItem(todo))}
+                </>
+              )}
 
-          {upcoming.length > 0 && (
-            <>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Upcoming</ThemedText>
-              {upcoming.map(todo => renderTodoItem(todo))}
-            </>
-          )}
+              {upcoming.length > 0 && (
+                <>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Upcoming</ThemedText>
+                  {upcoming.map(todo => renderTodoItem(todo))}
+                </>
+              )}
 
-          {noDate.length > 0 && (
-            <>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>No date</ThemedText>
-              {noDate.map(todo => renderTodoItem(todo))}
+              {noDate.length > 0 && (
+                <>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>No date</ThemedText>
+                  {noDate.map(todo => renderTodoItem(todo))}
+                </>
+              )}
             </>
+          ) : (
+            incompleteTodos.map(todo => renderTodoItem(todo))
           )}
         </View>
       )}

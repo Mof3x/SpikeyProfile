@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView, Platform } from "react-native";
+import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView, Platform, Switch } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -45,7 +45,7 @@ interface TabItem {
 export default function TrackScreen() {
   const { theme, typography } = useTheme();
   const { isModuleEnabled } = useModules();
-  const { addSymptomEntry, addTodo, logQuickAction, quickLogActions, todos, toggleTodo, symptomEntries } = useData();
+  const { addSymptomEntry, addTodo, logQuickAction, quickLogActions, todos, toggleTodo, symptomEntries, groupQuickLogs, setGroupQuickLogs } = useData();
   const { showLogged } = useLoggedFeedback();
   const { paddingTop, paddingBottom } = useScreenInsets();
 
@@ -293,11 +293,22 @@ export default function TrackScreen() {
       contentContainerStyle={[styles.pageContent, { paddingBottom: paddingBottom + Spacing.xl }]}
       showsVerticalScrollIndicator={false}
     >
-      <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-        Tap to log instantly
-      </ThemedText>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
+        <ThemedText type="body" style={{ color: theme.textSecondary }}>
+          Tap to log instantly
+        </ThemedText>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Sections</ThemedText>
+          <Switch
+            value={groupQuickLogs}
+            onValueChange={setGroupQuickLogs}
+            trackColor={{ false: theme.backgroundTertiary, true: theme.primary }}
+            thumbColor={theme.surface}
+          />
+        </View>
+      </View>
 
-      {(() => {
+      {groupQuickLogs ? (() => {
         const enabled = quickLogActions.filter((a) => a.enabled);
         const grouped: Record<string, typeof enabled> = { medication: [], habit: [], custom: [] } as any;
         enabled.forEach((a) => {
@@ -371,7 +382,25 @@ export default function TrackScreen() {
             )}
           </>
         );
-      })()}
+      })() : (
+        <View style={styles.quickLogGrid}>
+          {quickLogActions.filter((a) => a.enabled).map((action) => (
+            <Pressable
+              key={action.id}
+              onPress={() => handleQuickLog(action.id)}
+              style={({ pressed }) => [
+                styles.quickLogChip,
+                { backgroundColor: pressed ? theme.primary : theme.surfaceVariant },
+              ]}
+            >
+              <Feather name={action.icon as any || "zap"} size={20} color={theme.primary} />
+              <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: "center" }} numberOfLines={2}>
+                {action.name}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       {quickLogActions.filter((a) => a.enabled).length === 0 ? (
         <View style={[styles.emptyState, { backgroundColor: theme.surfaceVariant }]}>
