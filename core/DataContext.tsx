@@ -106,6 +106,10 @@ export interface CountdownTimer {
   color: string;
   enabled: boolean;
   notifyBefore?: number; // minutes before to notify
+  recurrenceEnabled?: boolean;
+  recurrenceEvery?: number;
+  recurrenceUnit?: "days" | "weeks";
+  recurrenceEndDate?: Date | null;
 }
 
 export interface CountUpTimer {
@@ -130,6 +134,10 @@ export interface AlarmSchedule {
   customIntervals?: number[];
   sound: string;
   vibrate: boolean;
+  recurrenceEnabled?: boolean;
+  recurrenceEvery?: number;
+  recurrenceUnit?: "days" | "weeks";
+  recurrenceEndDate?: Date | null;
   notificationIds: string[];
   createdAt: Date;
 }

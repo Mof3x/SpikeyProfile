@@ -25,6 +25,24 @@ export function AutomatedAlarms() {
   const { theme, typography } = useTheme();
   const { alarmSchedules, addAlarmSchedule, updateAlarmSchedule, removeAlarmSchedule, toggleAlarmSchedule } = useData();
   
+  recurrenceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  recurrenceInput: {
+    width: 64,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    textAlign: "center",
+  },
+  recurrenceUnitButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<AlarmSchedule | null>(null);
@@ -38,6 +56,12 @@ export function AutomatedAlarms() {
   const [newNumberOfAlarms, setNewNumberOfAlarms] = useState(4);
   const [newIntervalType, setNewIntervalType] = useState<"uniform" | "custom">("uniform");
   const [newVibrate, setNewVibrate] = useState(true);
+  const [newRecurrenceEnabled, setNewRecurrenceEnabled] = useState(false);
+  const [newRecurrenceEvery, setNewRecurrenceEvery] = useState("1");
+  const [newRecurrenceUnit, setNewRecurrenceUnit] = useState<"days" | "weeks">("days");
+  const [newRecurrenceHasEndDate, setNewRecurrenceHasEndDate] = useState(false);
+  const [newRecurrenceEndDate, setNewRecurrenceEndDate] = useState(new Date());
+  const [showRecurrenceEndPicker, setShowRecurrenceEndPicker] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<Notifications.PermissionStatus | null>(null);
   const [canAskAgain, setCanAskAgain] = useState(true);
   const pendingScheduleRef = useRef<Omit<AlarmSchedule, "id" | "createdAt" | "notificationIds"> | null>(null);
@@ -149,6 +173,41 @@ export function AutomatedAlarms() {
     return times;
   };
 
+  const buildDateWithTime = (dateBase: Date, timeSource: Date) => {
+    return new Date(
+      dateBase.getFullYear(),
+      dateBase.getMonth(),
+      dateBase.getDate(),
+      timeSource.getHours(),
+      timeSource.getMinutes(),
+      timeSource.getSeconds(),
+      timeSource.getMilliseconds(),
+    );
+  };
+
+  const getRecurrenceDates = (schedule: AlarmSchedule): Date[] => {
+    const dates: Date[] = [];
+    const startDate = new Date(schedule.startTime);
+    const baseDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+    if (!schedule.recurrenceEnabled) {
+      dates.push(baseDate);
+      return dates;
+    }
+
+    const every = Math.max(1, schedule.recurrenceEvery || 1);
+    const stepDays = schedule.recurrenceUnit === "weeks" ? every * 7 : every;
+    const limit = schedule.recurrenceEndDate
+      ? new Date(schedule.recurrenceEndDate)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    for (let d = new Date(baseDate); d <= limit; d.setDate(d.getDate() + stepDays)) {
+      dates.push(new Date(d));
+    }
+
+    return dates;
+  };
+
   const scheduleNotifications = async (schedule: AlarmSchedule, skipPermissionCheck = false) => {
     if (Platform.OS === "web") return [];
     
@@ -157,27 +216,33 @@ export function AutomatedAlarms() {
       if (status !== "granted") return [];
     }
 
-    const alarmTimes = calculateAlarmTimes(schedule.startTime, schedule.endTime, schedule.numberOfAlarms);
     const notificationIds: string[] = [];
+    const recurrenceDates = getRecurrenceDates(schedule);
 
-    for (let i = 0; i < alarmTimes.length; i++) {
-      const alarmTime = alarmTimes[i];
-      const now = new Date();
-      
-      if (alarmTime > now) {
-        const id = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: schedule.name,
-            body: `Alarm ${i + 1} of ${schedule.numberOfAlarms}`,
-            sound: true,
-            vibrate: schedule.vibrate ? [0, 250, 250, 250] : undefined,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: alarmTime,
-          },
-        });
-        notificationIds.push(id);
+    for (const dateBase of recurrenceDates) {
+      const startTime = buildDateWithTime(dateBase, schedule.startTime);
+      const endTime = buildDateWithTime(dateBase, schedule.endTime);
+      const alarmTimes = calculateAlarmTimes(startTime, endTime, schedule.numberOfAlarms);
+
+      for (let i = 0; i < alarmTimes.length; i++) {
+        const alarmTime = alarmTimes[i];
+        const now = new Date();
+
+        if (alarmTime > now) {
+          const id = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: schedule.name,
+              body: `Alarm ${i + 1} of ${schedule.numberOfAlarms}`,
+              sound: true,
+              vibrate: schedule.vibrate ? [0, 250, 250, 250] : undefined,
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: alarmTime,
+            },
+          });
+          notificationIds.push(id);
+        }
       }
     }
 
@@ -201,6 +266,12 @@ export function AutomatedAlarms() {
       return;
     }
 
+    const recurrenceEvery = Math.max(1, parseInt(newRecurrenceEvery || "1", 10));
+    if (newRecurrenceEnabled && newRecurrenceHasEndDate && newRecurrenceEndDate < newStartTime) {
+      Alert.alert("Check recurrence", "The recurrence end date should be after the start date.");
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const schedule: Omit<AlarmSchedule, "id" | "createdAt" | "notificationIds"> = {
@@ -212,6 +283,10 @@ export function AutomatedAlarms() {
       intervalType: newIntervalType,
       sound: "default",
       vibrate: newVibrate,
+      recurrenceEnabled: newRecurrenceEnabled,
+      recurrenceEvery,
+      recurrenceUnit: newRecurrenceUnit,
+      recurrenceEndDate: newRecurrenceHasEndDate ? newRecurrenceEndDate : null,
     };
 
     if (Platform.OS !== "web") {
@@ -334,6 +409,11 @@ export function AutomatedAlarms() {
     setNewNumberOfAlarms(schedule.numberOfAlarms);
     setNewIntervalType(schedule.intervalType);
     setNewVibrate(schedule.vibrate);
+    setNewRecurrenceEnabled(!!schedule.recurrenceEnabled);
+    setNewRecurrenceEvery(String(schedule.recurrenceEvery || 1));
+    setNewRecurrenceUnit(schedule.recurrenceUnit || "days");
+    setNewRecurrenceHasEndDate(!!schedule.recurrenceEndDate);
+    setNewRecurrenceEndDate(schedule.recurrenceEndDate ? new Date(schedule.recurrenceEndDate) : new Date());
     setShowEditModal(true);
   };
 
@@ -350,6 +430,12 @@ export function AutomatedAlarms() {
       return;
     }
 
+    const recurrenceEvery = Math.max(1, parseInt(newRecurrenceEvery || "1", 10));
+    if (newRecurrenceEnabled && newRecurrenceHasEndDate && newRecurrenceEndDate < newStartTime) {
+      Alert.alert("Check recurrence", "The recurrence end date should be after the start date.");
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     await cancelNotifications(editingSchedule.notificationIds);
@@ -362,6 +448,10 @@ export function AutomatedAlarms() {
       intervalType: newIntervalType,
       vibrate: newVibrate,
       notificationIds: [],
+      recurrenceEnabled: newRecurrenceEnabled,
+      recurrenceEvery,
+      recurrenceUnit: newRecurrenceUnit,
+      recurrenceEndDate: newRecurrenceHasEndDate ? newRecurrenceEndDate : null,
     };
 
     if (editingSchedule.enabled) {
@@ -388,6 +478,11 @@ export function AutomatedAlarms() {
     setNewNumberOfAlarms(4);
     setNewIntervalType("uniform");
     setNewVibrate(true);
+    setNewRecurrenceEnabled(false);
+    setNewRecurrenceEvery("1");
+    setNewRecurrenceUnit("days");
+    setNewRecurrenceHasEndDate(false);
+    setNewRecurrenceEndDate(new Date());
   };
 
   const formatTime = (date: Date) => {
@@ -421,6 +516,11 @@ export function AutomatedAlarms() {
               {schedule.numberOfAlarms} alarms {interval.toLowerCase()}
             </ThemedText>
           </View>
+            {schedule.recurrenceEnabled ? (
+              <ThemedText style={[typography.caption, { color: theme.textSecondary }]}>
+                Repeats every {schedule.recurrenceEvery || 1} {schedule.recurrenceUnit || "days"}
+              </ThemedText>
+            ) : null}
           <Switch
             value={schedule.enabled}
             onValueChange={() => handleToggleSchedule(schedule)}
@@ -594,6 +694,77 @@ export function AutomatedAlarms() {
               Calculated interval: {calculateInterval(newStartTime, newEndTime, newNumberOfAlarms)}
             </ThemedText>
 
+
+            <View style={[styles.optionRow, { marginTop: 20 }]}
+            >
+              <View style={styles.optionInfo}>
+                <Feather name="repeat" size={18} color={theme.textSecondary} />
+                <ThemedText style={[typography.body, { marginLeft: 12 }]}>Repeat</ThemedText>
+              </View>
+              <Switch
+                value={newRecurrenceEnabled}
+                onValueChange={setNewRecurrenceEnabled}
+                trackColor={{ false: theme.backgroundTertiary, true: theme.primary }}
+                thumbColor={theme.surface}
+              />
+            </View>
+
+            {newRecurrenceEnabled ? (
+              <View style={{ marginTop: Spacing.md }}>
+                <View style={styles.recurrenceRow}>
+                  <ThemedText style={[typography.caption, { color: theme.textSecondary }]}>Every</ThemedText>
+                  <TextInput
+                    style={[styles.recurrenceInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.divider }]}
+                    keyboardType="number-pad"
+                    value={newRecurrenceEvery}
+                    onChangeText={setNewRecurrenceEvery}
+                  />
+                  <Pressable
+                    onPress={() => setNewRecurrenceUnit(newRecurrenceUnit === "days" ? "weeks" : "days")}
+                    style={[styles.recurrenceUnitButton, { backgroundColor: theme.surfaceVariant }]}
+                  >
+                    <ThemedText style={typography.caption}>{newRecurrenceUnit}</ThemedText>
+                  </Pressable>
+                </View>
+
+                <View style={[styles.optionRow, { marginTop: Spacing.sm }]}>
+                  <View style={styles.optionInfo}>
+                    <Feather name="calendar" size={18} color={theme.textSecondary} />
+                    <ThemedText style={[typography.body, { marginLeft: 12 }]}>End date</ThemedText>
+                  </View>
+                  <Switch
+                    value={newRecurrenceHasEndDate}
+                    onValueChange={setNewRecurrenceHasEndDate}
+                    trackColor={{ false: theme.backgroundTertiary, true: theme.primary }}
+                    thumbColor={theme.surface}
+                  />
+                </View>
+
+                {newRecurrenceHasEndDate ? (
+                  <Pressable
+                    onPress={() => setShowRecurrenceEndPicker(true)}
+                    style={[styles.timeButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.divider, marginTop: Spacing.sm }]}
+                  >
+                    <Feather name="calendar" size={16} color={theme.primary} />
+                    <ThemedText style={[typography.body, { marginLeft: 8 }]}>
+                      {newRecurrenceEndDate.toLocaleDateString()}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
+
+                {showRecurrenceEndPicker ? (
+                  <DateTimePicker
+                    value={newRecurrenceEndDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, date) => {
+                      setShowRecurrenceEndPicker(false);
+                      if (date) setNewRecurrenceEndDate(date);
+                    }}
+                  />
+                ) : null}
+              </View>
+            ) : null}
             <View style={[styles.optionRow, { marginTop: 20 }]}>
               <View style={styles.optionInfo}>
                 <Feather name="smartphone" size={18} color={theme.textSecondary} />

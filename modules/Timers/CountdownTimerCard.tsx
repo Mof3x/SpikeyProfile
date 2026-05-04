@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView, Platform } from "react-native";
+import { StyleSheet, View, Pressable, TextInput, Modal, ScrollView, Platform, Switch, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -28,7 +28,22 @@ export function CountdownTimerCard() {
   const [newName, setNewName] = useState("");
   const [newCategory, setNewCategory] = useState<CountdownTimer["category"]>("event");
   const [newTargetDate, setNewTargetDate] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  const [newRecurrenceEnabled, setNewRecurrenceEnabled] = useState(false);
+  const [newRecurrenceEvery, setNewRecurrenceEvery] = useState("1");
+  const [newRecurrenceUnit, setNewRecurrenceUnit] = useState<"days" | "weeks">("days");
+  const [newRecurrenceHasEndDate, setNewRecurrenceHasEndDate] = useState(false);
+  const [newRecurrenceEndDate, setNewRecurrenceEndDate] = useState(new Date());
+  const [showRecurrenceEndPicker, setShowRecurrenceEndPicker] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ [id: string]: { days: number; hours: number; minutes: number; seconds: number; expired: boolean } }>({});
+
+  const getNextTargetDate = (target: Date, every: number, unit: "days" | "weeks", now: Date) => {
+    const stepDays = unit === "weeks" ? every * 7 : every;
+    let next = new Date(target);
+    while (next.getTime() <= now.getTime()) {
+      next = new Date(next.getTime() + stepDays * 24 * 60 * 60 * 1000);
+    }
+    return next;
+  };
 
   const calculateTimeLeft = useCallback(() => {
     const now = new Date().getTime();
@@ -40,6 +55,15 @@ export function CountdownTimerCard() {
       const diff = target - now;
       
       if (diff <= 0) {
+        if (timer.recurrenceEnabled) {
+          const every = Math.max(1, timer.recurrenceEvery || 1);
+          const unit = timer.recurrenceUnit || "days";
+          const next = getNextTargetDate(new Date(timer.targetDate), every, unit, new Date());
+          const endDate = timer.recurrenceEndDate ? new Date(timer.recurrenceEndDate) : null;
+          if (!endDate || next.getTime() <= endDate.getTime()) {
+            updateCountdownTimer(timer.id, { targetDate: next });
+          }
+        }
         result[timer.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
       } else {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -61,7 +85,13 @@ export function CountdownTimerCard() {
 
   const handleAddTimer = () => {
     if (!newName.trim()) return;
+    if (newRecurrenceEnabled && newRecurrenceHasEndDate && newRecurrenceEndDate < newTargetDate) {
+      Alert.alert("Check recurrence", "The recurrence end date should be after the target date.");
+      return;
+    }
     
+    const recurrenceEvery = Math.max(1, parseInt(newRecurrenceEvery || "1", 10));
+
     addCountdownTimer({
       name: newName.trim(),
       targetDate: newTargetDate,
@@ -69,6 +99,10 @@ export function CountdownTimerCard() {
       icon: CATEGORY_CONFIG[newCategory].icon,
       color: CATEGORY_CONFIG[newCategory].color,
       enabled: true,
+      recurrenceEnabled: newRecurrenceEnabled,
+      recurrenceEvery,
+      recurrenceUnit: newRecurrenceUnit,
+      recurrenceEndDate: newRecurrenceHasEndDate ? newRecurrenceEndDate : null,
     });
     
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -76,6 +110,11 @@ export function CountdownTimerCard() {
     setNewName("");
     setNewCategory("event");
     setNewTargetDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    setNewRecurrenceEnabled(false);
+    setNewRecurrenceEvery("1");
+    setNewRecurrenceUnit("days");
+    setNewRecurrenceHasEndDate(false);
+    setNewRecurrenceEndDate(new Date());
   };
 
   const handleToggleTimer = (id: string, enabled: boolean) => {
@@ -269,6 +308,76 @@ export function CountdownTimerCard() {
                 />
               )}
 
+              <View style={[styles.optionRow, { marginTop: Spacing.lg }]}>
+                <View style={styles.optionInfo}>
+                  <Feather name="repeat" size={18} color={theme.textSecondary} />
+                  <ThemedText type="body" style={{ marginLeft: Spacing.md }}>Repeat</ThemedText>
+                </View>
+                <Switch
+                  value={newRecurrenceEnabled}
+                  onValueChange={setNewRecurrenceEnabled}
+                  trackColor={{ false: theme.backgroundTertiary, true: theme.primary }}
+                  thumbColor={theme.surface}
+                />
+              </View>
+
+              {newRecurrenceEnabled ? (
+                <View style={{ marginTop: Spacing.md }}>
+                  <View style={styles.recurrenceRow}>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>Every</ThemedText>
+                    <TextInput
+                      style={[styles.recurrenceInput, { backgroundColor: theme.surfaceVariant, color: theme.text }]}
+                      keyboardType="number-pad"
+                      value={newRecurrenceEvery}
+                      onChangeText={setNewRecurrenceEvery}
+                    />
+                    <Pressable
+                      onPress={() => setNewRecurrenceUnit(newRecurrenceUnit === "days" ? "weeks" : "days")}
+                      style={[styles.recurrenceUnitButton, { backgroundColor: theme.surfaceVariant }]}
+                    >
+                      <ThemedText type="caption">{newRecurrenceUnit}</ThemedText>
+                    </Pressable>
+                  </View>
+
+                  <View style={[styles.optionRow, { marginTop: Spacing.sm }]}>
+                    <View style={styles.optionInfo}>
+                      <Feather name="calendar" size={18} color={theme.textSecondary} />
+                      <ThemedText type="body" style={{ marginLeft: Spacing.md }}>End date</ThemedText>
+                    </View>
+                    <Switch
+                      value={newRecurrenceHasEndDate}
+                      onValueChange={setNewRecurrenceHasEndDate}
+                      trackColor={{ false: theme.backgroundTertiary, true: theme.primary }}
+                      thumbColor={theme.surface}
+                    />
+                  </View>
+
+                  {newRecurrenceHasEndDate ? (
+                    <Pressable
+                      onPress={() => setShowRecurrenceEndPicker(true)}
+                      style={[styles.dateTimeButton, { backgroundColor: theme.surfaceVariant, marginTop: Spacing.sm }]}
+                    >
+                      <Feather name="calendar" size={18} color={theme.primary} />
+                      <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
+                        {newRecurrenceEndDate.toLocaleDateString()}
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+
+                  {(showRecurrenceEndPicker) && Platform.OS !== "web" && (
+                    <DateTimePicker
+                      value={newRecurrenceEndDate}
+                      mode="date"
+                      onChange={(event, date) => {
+                        setShowRecurrenceEndPicker(false);
+                        if (date) setNewRecurrenceEndDate(date);
+                      }}
+                      minimumDate={new Date()}
+                    />
+                  )}
+                </View>
+              ) : null}
+
               <Pressable
                 onPress={handleAddTimer}
                 style={[styles.saveButton, { backgroundColor: theme.primary, opacity: newName.trim() ? 1 : 0.5 }]}
@@ -397,5 +506,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.xl,
     marginBottom: Spacing.xl,
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  optionInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  recurrenceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  recurrenceInput: {
+    width: 64,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    textAlign: "center",
+  },
+  recurrenceUnitButton: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
   },
 });
