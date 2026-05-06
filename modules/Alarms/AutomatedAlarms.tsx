@@ -11,6 +11,31 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { useData, AlarmSchedule } from "@/core/DataContext";
 
+const MAX_SCHEDULED_NOTIFICATIONS = 60;
+const DEFAULT_RECURRENCE_WINDOW_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const toDate = (value: Date | string | number) =>
+  value instanceof Date ? value : new Date(value);
+
+const isValidDate = (value: Date) => !Number.isNaN(value.getTime());
+
+const normalizePositiveInt = (
+  value: number | string | null | undefined,
+  fallback = 1,
+) => {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+};
+
+type ScheduledNotificationResult = {
+  notificationIds: string[];
+  hitLimit: boolean;
+};
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -137,16 +162,21 @@ export function AutomatedAlarms() {
 
   const calculateAlarmTimes = (startTime: Date, endTime: Date, count: number): Date[] => {
     const times: Date[] = [];
-    if (count <= 0) return times;
-    if (count === 1) {
+    const safeCount = Math.max(1, Math.floor(count));
+    if (!isValidDate(startTime) || !isValidDate(endTime)) return times;
+    if (safeCount === 1) {
       times.push(new Date(startTime));
       return times;
     }
 
     const totalDuration = endTime.getTime() - startTime.getTime();
-    const interval = totalDuration / (count - 1);
+    if (totalDuration <= 0) {
+      times.push(new Date(startTime));
+      return times;
+    }
+    const interval = totalDuration / (safeCount - 1);
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < safeCount; i++) {
       const alarmTime = new Date(startTime.getTime() + interval * i);
       times.push(alarmTime);
     }
@@ -154,21 +184,27 @@ export function AutomatedAlarms() {
     return times;
   };
 
-  const buildDateWithTime = (dateBase: Date, timeSource: Date) => {
+  const buildDateWithTime = (dateBase: Date, timeSource: Date | string | number) => {
+    const base = toDate(dateBase);
+    const time = toDate(timeSource);
+    if (!isValidDate(base) || !isValidDate(time)) {
+      return new Date("invalid");
+    }
     return new Date(
-      dateBase.getFullYear(),
-      dateBase.getMonth(),
-      dateBase.getDate(),
-      timeSource.getHours(),
-      timeSource.getMinutes(),
-      timeSource.getSeconds(),
-      timeSource.getMilliseconds(),
+      base.getFullYear(),
+      base.getMonth(),
+      base.getDate(),
+      time.getHours(),
+      time.getMinutes(),
+      time.getSeconds(),
+      time.getMilliseconds(),
     );
   };
 
   const getRecurrenceDates = (schedule: AlarmSchedule): Date[] => {
     const dates: Date[] = [];
-    const startDate = new Date(schedule.startTime);
+    const startDate = toDate(schedule.startTime);
+    if (!isValidDate(startDate)) return dates;
     const baseDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
 
     if (!schedule.recurrenceEnabled) {
@@ -176,58 +212,94 @@ export function AutomatedAlarms() {
       return dates;
     }
 
-    const every = Math.max(1, schedule.recurrenceEvery || 1);
+    const every = normalizePositiveInt(schedule.recurrenceEvery, 1);
     const stepDays = schedule.recurrenceUnit === "weeks" ? every * 7 : every;
-    const limit = schedule.recurrenceEndDate
-      ? new Date(schedule.recurrenceEndDate)
-      : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+    const defaultLimit = new Date(Date.now() + DEFAULT_RECURRENCE_WINDOW_DAYS * DAY_MS);
+    const endDateCandidate = schedule.recurrenceEndDate
+      ? toDate(schedule.recurrenceEndDate)
+      : defaultLimit;
+    const limit = isValidDate(endDateCandidate) ? endDateCandidate : defaultLimit;
+    const maxDates = Math.max(
+      1,
+      Math.floor(MAX_SCHEDULED_NOTIFICATIONS / Math.max(1, schedule.numberOfAlarms)),
+    );
 
-    for (let d = new Date(baseDate); d <= limit; d.setDate(d.getDate() + stepDays)) {
+    for (let d = new Date(baseDate); d <= limit && dates.length < maxDates; d.setDate(d.getDate() + stepDays)) {
       dates.push(new Date(d));
     }
 
     return dates;
   };
 
-  const scheduleNotifications = async (schedule: AlarmSchedule, skipPermissionCheck = false) => {
-    if (Platform.OS === "web") return [];
+  const scheduleNotifications = async (
+    schedule: AlarmSchedule,
+    skipPermissionCheck = false,
+  ): Promise<ScheduledNotificationResult> => {
+    if (Platform.OS === "web") return { notificationIds: [], hitLimit: false };
     
     if (!skipPermissionCheck) {
       const { status } = await Notifications.getPermissionsAsync();
-      if (status !== "granted") return [];
+      if (status !== "granted") return { notificationIds: [], hitLimit: false };
+    }
+
+    const normalizedSchedule: AlarmSchedule = {
+      ...schedule,
+      startTime: toDate(schedule.startTime),
+      endTime: toDate(schedule.endTime),
+      recurrenceEndDate: schedule.recurrenceEndDate
+        ? toDate(schedule.recurrenceEndDate)
+        : null,
+    };
+
+    if (!isValidDate(normalizedSchedule.startTime) || !isValidDate(normalizedSchedule.endTime)) {
+      return { notificationIds: [], hitLimit: false };
     }
 
     const notificationIds: string[] = [];
-    const recurrenceDates = getRecurrenceDates(schedule);
+    const recurrenceDates = getRecurrenceDates(normalizedSchedule);
+    let hitLimit = false;
 
     for (const dateBase of recurrenceDates) {
-      const startTime = buildDateWithTime(dateBase, schedule.startTime);
-      const endTime = buildDateWithTime(dateBase, schedule.endTime);
-      const alarmTimes = calculateAlarmTimes(startTime, endTime, schedule.numberOfAlarms);
+      const startTime = buildDateWithTime(dateBase, normalizedSchedule.startTime);
+      const endTime = buildDateWithTime(dateBase, normalizedSchedule.endTime);
+      if (!isValidDate(startTime) || !isValidDate(endTime)) continue;
+      const alarmTimes = calculateAlarmTimes(startTime, endTime, normalizedSchedule.numberOfAlarms);
 
       for (let i = 0; i < alarmTimes.length; i++) {
+        if (notificationIds.length >= MAX_SCHEDULED_NOTIFICATIONS) {
+          hitLimit = true;
+          break;
+        }
+
         const alarmTime = alarmTimes[i];
         const now = new Date();
 
         if (alarmTime > now) {
-          const id = await Notifications.scheduleNotificationAsync({
-            content: {
-              title: schedule.name,
-              body: `Alarm ${i + 1} of ${schedule.numberOfAlarms}`,
-              sound: true,
-              vibrate: schedule.vibrate ? [0, 250, 250, 250] : undefined,
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: alarmTime,
-            },
-          });
-          notificationIds.push(id);
+          try {
+            const id = await Notifications.scheduleNotificationAsync({
+              content: {
+                title: normalizedSchedule.name,
+                body: `Alarm ${i + 1} of ${normalizedSchedule.numberOfAlarms}`,
+                sound: true,
+                vibrate: normalizedSchedule.vibrate ? [0, 250, 250, 250] : undefined,
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: alarmTime,
+              },
+            });
+            notificationIds.push(id);
+          } catch (error) {
+            hitLimit = true;
+            break;
+          }
         }
       }
+
+      if (hitLimit) break;
     }
 
-    return notificationIds;
+    return { notificationIds, hitLimit };
   };
 
   const cancelNotifications = async (notificationIds: string[]) => {
@@ -247,7 +319,7 @@ export function AutomatedAlarms() {
       return;
     }
 
-    const recurrenceEvery = Math.max(1, parseInt(newRecurrenceEvery || "1", 10));
+    const recurrenceEvery = normalizePositiveInt(newRecurrenceEvery, 1);
     if (newRecurrenceEnabled && newRecurrenceHasEndDate && newRecurrenceEndDate < newStartTime) {
       Alert.alert("Check recurrence", "The recurrence end date should be after the start date.");
       return;
@@ -281,7 +353,7 @@ export function AutomatedAlarms() {
           notificationIds: [],
         };
         
-        const notificationIds = await scheduleNotifications(tempSchedule, true);
+        const { notificationIds, hitLimit } = await scheduleNotifications(tempSchedule, true);
         
         addAlarmSchedule(schedule);
         
@@ -294,9 +366,12 @@ export function AutomatedAlarms() {
         }, 100);
         
         if (notificationIds.length > 0) {
+          const limitNote = hitLimit
+            ? ` Only the next ${notificationIds.length} alarms were scheduled.`
+            : "";
           Alert.alert(
             "Alarms Set",
-            `${notificationIds.length} alarm${notificationIds.length > 1 ? 's' : ''} scheduled for "${schedule.name}".`
+            `${notificationIds.length} alarm${notificationIds.length > 1 ? 's' : ''} scheduled for "${schedule.name}".${limitNote}`
           );
         } else {
           Alert.alert(
@@ -341,14 +416,17 @@ export function AutomatedAlarms() {
         return;
       }
       
-      const newIds = await scheduleNotifications({ ...schedule, enabled: true }, true);
+      const { notificationIds: newIds, hitLimit } = await scheduleNotifications({ ...schedule, enabled: true }, true);
       
       if (newIds.length > 0) {
         updateAlarmSchedule(schedule.id, { notificationIds: newIds });
         toggleAlarmSchedule(schedule.id);
+        const limitNote = hitLimit
+          ? ` Only the next ${newIds.length} alarms were scheduled.`
+          : "";
         Alert.alert(
           "Alarms Enabled",
-          `${newIds.length} alarm${newIds.length > 1 ? 's' : ''} scheduled.`
+          `${newIds.length} alarm${newIds.length > 1 ? 's' : ''} scheduled.${limitNote}`
         );
       } else {
         Alert.alert(
@@ -411,7 +489,7 @@ export function AutomatedAlarms() {
       return;
     }
 
-    const recurrenceEvery = Math.max(1, parseInt(newRecurrenceEvery || "1", 10));
+    const recurrenceEvery = normalizePositiveInt(newRecurrenceEvery, 1);
     if (newRecurrenceEnabled && newRecurrenceHasEndDate && newRecurrenceEndDate < newStartTime) {
       Alert.alert("Check recurrence", "The recurrence end date should be after the start date.");
       return;
@@ -439,7 +517,7 @@ export function AutomatedAlarms() {
       const { status } = await Notifications.getPermissionsAsync();
       if (status === "granted") {
         const newSchedule = { ...editingSchedule, ...updates };
-        const newIds = await scheduleNotifications(newSchedule, true);
+        const { notificationIds: newIds } = await scheduleNotifications(newSchedule, true);
         updates.notificationIds = newIds;
       } else {
         updates.notificationIds = [];
