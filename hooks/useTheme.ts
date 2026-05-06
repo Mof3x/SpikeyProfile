@@ -47,5 +47,6 @@ export function useTheme() {
     isDark,
     fontScale,
     typography: scaledTypography,
+    spacing: theme.spacing,
   };
 }

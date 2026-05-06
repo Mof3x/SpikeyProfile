@@ -47,7 +47,7 @@ Notifications.setNotificationHandler({
 });
 
 export function AutomatedAlarms() {
-  const { theme, typography } = useTheme();
+  const { theme, typography, spacing } = useTheme();
   const { alarmSchedules, addAlarmSchedule, updateAlarmSchedule, removeAlarmSchedule, toggleAlarmSchedule } = useData();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -769,7 +769,7 @@ export function AutomatedAlarms() {
             </View>
 
             {newRecurrenceEnabled ? (
-              <View style={{ marginTop: Spacing.md }}>
+              <View style={{ marginTop: spacing.md }}>
                 <View style={styles.recurrenceRow}>
                   <ThemedText style={[typography.caption, { color: theme.textSecondary }]}>Every</ThemedText>
                   <TextInput
@@ -786,7 +786,7 @@ export function AutomatedAlarms() {
                   </Pressable>
                 </View>
 
-                <View style={[styles.optionRow, { marginTop: Spacing.sm }]}>
+                <View style={[styles.optionRow, { marginTop: spacing.sm }]}>
                   <View style={styles.optionInfo}>
                     <Feather name="calendar" size={18} color={theme.textSecondary} />
                     <ThemedText style={[typography.body, { marginLeft: 12 }]}>End date</ThemedText>
@@ -802,7 +802,7 @@ export function AutomatedAlarms() {
                 {newRecurrenceHasEndDate ? (
                   <Pressable
                     onPress={() => setShowRecurrenceEndPicker(true)}
-                    style={[styles.timeButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.divider, marginTop: Spacing.sm }]}
+                    style={[styles.timeButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.divider, marginTop: spacing.sm }]}
                   >
                     <Feather name="calendar" size={16} color={theme.primary} />
                     <ThemedText style={[typography.body, { marginLeft: 8 }]}>

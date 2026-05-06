@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { Spacing } from "@/constants/theme";
+
 export type ThemeId = "calmBlue" | "forestGreen" | "sunset" | "minimal" | "lavender";
 export type FontSize = "small" | "medium" | "large" | "extraLarge";
 
@@ -24,6 +26,10 @@ interface ThemeColors {
   surface: string;
   surfaceVariant: string;
 }
+
+export type ThemeTokens = ThemeColors & {
+  spacing: typeof Spacing;
+};
 
 interface ThemePreset {
   id: ThemeId;
@@ -275,7 +281,7 @@ interface ThemeContextType {
   setIsDark: (dark: boolean) => void;
   fontSize: FontSize;
   setFontSize: (size: FontSize) => void;
-  theme: ThemeColors;
+  theme: ThemeTokens;
   fontScale: number;
   themePresets: ThemePreset[];
   currentPreset: ThemePreset;
@@ -355,8 +361,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return THEME_PRESETS.find((p) => p.id === themeId) || THEME_PRESETS[0];
   }, [themeId]);
 
-  const theme = useMemo(() => {
-    return isDark ? currentPreset.dark : currentPreset.light;
+  const theme = useMemo<ThemeTokens>(() => {
+    const baseTheme = isDark ? currentPreset.dark : currentPreset.light;
+    return { ...baseTheme, spacing: Spacing };
   }, [currentPreset, isDark]);
 
   const fontScale = FONT_SIZE_SCALES[fontSize];
@@ -389,4 +396,4 @@ export function useThemeContext() {
 }
 
 export { THEME_PRESETS, FONT_SIZE_SCALES };
-export type { ThemeColors, ThemePreset };
+export type { ThemeColors, ThemePreset, ThemeTokens };
