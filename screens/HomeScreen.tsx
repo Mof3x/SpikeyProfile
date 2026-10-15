@@ -18,6 +18,8 @@ import { GamificationCard } from "@/modules/Gamification/GamificationCard";
 import { TodaySummaryCard } from "@/modules/SymptomTracker/TodaySummaryCard";
 import { ClipboardPreview } from "@/modules/ClipboardTray/ClipboardPreview";
 import { QuickInsightCard } from "@/modules/PatternInsights/QuickInsightCard";
+import { WelcomeBackCard } from "@/modules/PatternInsights/WelcomeBackCard";
+import { useAnalytics } from "@/core/AnalyticsContext";
 import { TodoWidget } from "@/modules/TodoList/TodoWidget";
 import { UpcomingEventsWidget } from "@/modules/Calendar/UpcomingEventsWidget";
 import { NFCQuickLogCard } from "@/modules/NFCModule/NFCQuickLog";
@@ -176,6 +178,7 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const { isModuleEnabled } = useModules();
+  const analytics = useAnalytics();
   const { userName, symptomEntries, widgetOrder, setWidgetOrder } = useData();
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [collapsedWidgets, setCollapsedWidgets] = useState<
@@ -261,6 +264,8 @@ export default function HomeScreen() {
     }));
   };
 
+  const showWelcomeBack = isModuleEnabled("patternInsights") && !!analytics.result.engagement.welcomeBack;
+
   return (
     <ScreenScrollView>
       <View style={styles.header}>
@@ -302,6 +307,13 @@ export default function HomeScreen() {
       </View>
 
       <Spacer height={Spacing.xl} />
+
+      {showWelcomeBack ? (
+        <>
+          <WelcomeBackCard />
+          <Spacer height={Spacing.lg} />
+        </>
+      ) : null}
 
       {widgetOrder.map((widgetId) => {
         const widget = renderWidget(widgetId);

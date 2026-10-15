@@ -7,6 +7,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useData } from "@/core/DataContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useAnalytics } from "@/core/AnalyticsContext";
+import { describeTimeOfDay, formatClock } from "@/core/analytics/dates";
 
 interface DayData {
   date: Date;
@@ -17,6 +19,9 @@ interface DayData {
 export function MedicationHistoryCard() {
   const { theme } = useTheme();
   const { quickLogEntries, quickLogActions } = useData();
+  const { result, showNumbers } = useAnalytics();
+  const enabledMedIds = new Set(quickLogActions.filter((a) => a.category === "medication" && a.enabled).map((a) => a.id));
+  const patterns = result.meds.filter((m) => enabledMedIds.has(m.actionId) && m.usualMinutes !== undefined);
 
   const last7Days = useMemo(() => {
     const days: DayData[] = [];
@@ -117,6 +122,43 @@ export function MedicationHistoryCard() {
         ))}
       </View>
 
+      {patterns.map((med) => (
+        <View key={med.actionId} style={[styles.patternRow, { borderTopColor: theme.divider }]}>
+          <View style={{ flex: 1 }}>
+            <ThemedText type="small" style={{ fontWeight: "600" }}>
+              {med.name}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {showNumbers
+                ? `Usually logged around ${formatClock(med.usualMinutes!)}`
+                : `Usually logged ${describeTimeOfDay(med.usualMinutes!)}`}
+              {med.daily && med.notLoggedStreak >= 3
+                ? showNumbers
+                  ? ` · not logged for ${med.notLoggedStreak} days`
+                  : " · not logged for a few days"
+                : ""}
+            </ThemedText>
+          </View>
+          <View
+            style={styles.trend}
+            accessibilityLabel={`${med.name}: share of days logged over the last eight weeks`}
+          >
+            {med.weeklyRates.map((rate, i) => (
+              <View key={i} style={[styles.trendSlot, { backgroundColor: theme.divider }]}>
+                {Number.isFinite(rate) ? (
+                  <View
+                    style={[
+                      styles.trendFill,
+                      { height: `${Math.max(8, rate * 100)}%`, backgroundColor: rate >= 0.8 ? theme.success : theme.accent },
+                    ]}
+                  />
+                ) : null}
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+
       <View style={[styles.statsRow, { borderTopColor: theme.divider }]}>
         <View style={styles.stat}>
           <ThemedText type="h3" style={{ color: theme.primary }}>
@@ -177,6 +219,30 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+  },
+  patternRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+  },
+  trend: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 3,
+    height: 24,
+  },
+  trendSlot: {
+    width: 6,
+    height: "100%",
+    borderRadius: 2,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  trendFill: {
+    width: "100%",
+    borderRadius: 2,
   },
   statsRow: {
     flexDirection: "row",

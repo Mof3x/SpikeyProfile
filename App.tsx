@@ -14,6 +14,8 @@ import { ThemeProvider, useThemeContext } from "@/core/ThemeContext";
 import { OnboardingFlowProvider } from "@/core/OnboardingFlowContext";
 import { LoggedFeedbackProvider } from "@/core/LoggedFeedbackContext";
 import { NfcLinkingHandler } from "@/core/NfcLinkingHandler";
+import { SourcesProvider } from "@/core/sources/SourcesContext";
+import { AnalyticsProvider } from "@/core/AnalyticsContext";
 
 function AppContent() {
   const { isDark, theme, isLoading: isThemeLoading } = useThemeContext();
@@ -51,13 +53,17 @@ export default function App() {
           <ThemeProvider>
             <ModuleProvider>
               <DataProvider>
-                <OnboardingFlowProvider>
-                  <LoggedFeedbackProvider>
-                    <ErrorBoundary>
-                      <AppContent />
-                    </ErrorBoundary>
-                  </LoggedFeedbackProvider>
-                </OnboardingFlowProvider>
+                <SourcesProvider>
+                  <AnalyticsProvider>
+                    <OnboardingFlowProvider>
+                      <LoggedFeedbackProvider>
+                        <ErrorBoundary>
+                          <AppContent />
+                        </ErrorBoundary>
+                      </LoggedFeedbackProvider>
+                    </OnboardingFlowProvider>
+                  </AnalyticsProvider>
+                </SourcesProvider>
               </DataProvider>
             </ModuleProvider>
           </ThemeProvider>

@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  DEFAULT_INSIGHT_SETTINGS,
+  DEFAULT_INTAKE_CONFIG,
+  SAMPLE_ENTRY_IDS,
+} from "@/core/dataConstants";
+
 export interface SymptomEntry {
   id: string;
   timestamp: Date;
@@ -10,6 +16,9 @@ export interface SymptomEntry {
   sensoryOverload: number;
   executiveDysfunction: number;
   notes?: string;
+  sleepHours?: number;
+  sleepQuality?: number;
+  source?: "manual" | "quickTap";
 }
 
 export interface ClipboardItem {
@@ -24,6 +33,7 @@ export interface TodoItem {
   completed: boolean;
   createdAt: Date;
   dueDate?: Date;
+  completedAt?: Date;
 }
 
 export interface CalendarEvent {
@@ -157,6 +167,87 @@ export interface PatternInsight {
   description: string;
   icon: string;
   type: "positive" | "neutral" | "warning";
+  plain?: string;
+  numbers?: string;
+  basis?: string;
+}
+
+export type ExerciseType = "walk" | "run" | "gym" | "yoga" | "cycle" | "swim" | "sport" | "other";
+
+export interface ExerciseEntry {
+  id: string;
+  timestamp: Date;
+  type: ExerciseType;
+  minutes: number;
+  intensity: 1 | 2 | 3;
+}
+
+export type IntakeCategory = "meal" | "snack" | "drink" | "substance";
+
+export interface IntakeEntry {
+  id: string;
+  timestamp: Date;
+  category: IntakeCategory;
+  item: string;
+  amount?: number;
+  tags?: string[];
+}
+
+export interface SubstanceDef {
+  id: string;
+  name: string;
+  unit: string;
+  stimulant?: boolean;
+  enabled: boolean;
+}
+
+export interface IntakeConfig {
+  tags: string[];
+  hiddenTags: string[];
+  substances: SubstanceDef[];
+}
+
+export interface FocusSession {
+  id: string;
+  endedAt: Date;
+  minutes: number;
+}
+
+export type PeriodFlow = "spotting" | "light" | "medium" | "heavy";
+
+export interface PeriodDay {
+  date: string;
+  flow?: PeriodFlow;
+}
+
+export type DayNoteReason = "unwell" | "period" | "busy" | "lowMood" | "feltGreat" | "justDidnt";
+
+export interface DayNote {
+  date: string;
+  overall?: number;
+  reasons: DayNoteReason[];
+  createdAt: Date;
+}
+
+export type AgeRange = "16-24" | "25-34" | "35-44" | "45-54" | "55+" | "preferNot";
+
+export interface HomeTown {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface InsightSettings {
+  showNumbers: boolean;
+  outlookNotifications: boolean;
+  medNudges: boolean;
+  lowEffortCheckins: boolean;
+  medSlipHeadsUp: boolean;
+  weatherEnabled: boolean;
+  weatherMode: "gps" | "town";
+  homeTown: HomeTown | null;
+  stepsEnabled: boolean;
+  substancesEnabled: boolean;
 }
 
 export type OnboardingAxisId =
@@ -270,7 +361,6 @@ interface DataContextType {
   removeAlarmSchedule: (id: string) => void;
   toggleAlarmSchedule: (id: string) => void;
   userStats: UserStats;
-  insights: PatternInsight[];
   userName: string;
   setUserName: (name: string) => void;
   profileImageUri: string | null;
@@ -300,7 +390,46 @@ interface DataContextType {
   deviceStorageEnabled: boolean;
   setDeviceStorageEnabled: (enabled: boolean) => void;
   clearAllDeviceData: () => void;
+  dataResetCount: number;
+  exerciseEntries: ExerciseEntry[];
+  addExerciseEntry: (entry: Omit<ExerciseEntry, "id" | "timestamp">, timestamp?: Date) => void;
+  removeExerciseEntry: (id: string) => void;
+  intakeEntries: IntakeEntry[];
+  addIntakeEntry: (entry: Omit<IntakeEntry, "id" | "timestamp">, timestamp?: Date) => void;
+  removeIntakeEntry: (id: string) => void;
+  intakeConfig: IntakeConfig;
+  setIntakeConfig: (config: IntakeConfig) => void;
+  focusSessions: FocusSession[];
+  addFocusSession: (minutes: number) => void;
+  periodDays: PeriodDay[];
+  setPeriodDay: (date: string, flow?: PeriodFlow) => void;
+  removePeriodDay: (date: string) => void;
+  dayNotes: DayNote[];
+  saveDayNotes: (dates: string[], note: Omit<DayNote, "date" | "createdAt">) => void;
+  ageRange: AgeRange | null;
+  setAgeRange: (range: AgeRange | null) => void;
+  insightSettings: InsightSettings;
+  updateInsightSettings: (changes: Partial<InsightSettings>) => void;
+  updateCustomTracker: (id: string, changes: Partial<CustomTracker>) => void;
+  removeCustomTrackerEntry: (id: string) => void;
+  loadDemoData: (data: DemoDataBundle) => void;
   isLoading: boolean;
+}
+
+export { DEFAULT_INSIGHT_SETTINGS, DEFAULT_INTAKE_CONFIG, SAMPLE_ENTRY_IDS };
+
+export interface DemoDataBundle {
+  symptomEntries: SymptomEntry[];
+  quickLogActions: QuickLogAction[];
+  quickLogEntries: QuickLogEntry[];
+  todos: TodoItem[];
+  calendarEvents: CalendarEvent[];
+  exerciseEntries: ExerciseEntry[];
+  intakeEntries: IntakeEntry[];
+  focusSessions: FocusSession[];
+  periodDays: PeriodDay[];
+  customTrackers: CustomTracker[];
+  customTrackerEntries: CustomTrackerEntry[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -331,6 +460,14 @@ const STORAGE_KEYS = {
   onboardingComplete: "@spikeyprofile/onboardingComplete",
   onboardingProfile: "@spikeyprofile/onboardingProfile",
   deviceStorageEnabled: "@spikeyprofile/deviceStorageEnabled",
+  exerciseEntries: "@spikeyprofile/exerciseEntries",
+  intakeEntries: "@spikeyprofile/intakeEntries",
+  intakeConfig: "@spikeyprofile/intakeConfig",
+  focusSessions: "@spikeyprofile/focusSessions",
+  periodDays: "@spikeyprofile/periodDays",
+  dayNotes: "@spikeyprofile/dayNotes",
+  ageRange: "@spikeyprofile/ageRange",
+  insightSettings: "@spikeyprofile/insightSettings",
 };
 
 const DEFAULT_LOW_SENSORY_SETTINGS: LowSensorySettings = {
@@ -390,93 +527,12 @@ const INITIAL_STATS: UserStats = {
   lastEntryDate: null,
 };
 
-const SAMPLE_ENTRIES: SymptomEntry[] = [
-  {
-    id: "1",
-    timestamp: new Date(Date.now() - 86400000 * 6),
-    mood: 7,
-    energy: 5,
-    brainFog: 3,
-    sensoryOverload: 2,
-    executiveDysfunction: 4,
-  },
-  {
-    id: "2",
-    timestamp: new Date(Date.now() - 86400000 * 5),
-    mood: 6,
-    energy: 4,
-    brainFog: 5,
-    sensoryOverload: 4,
-    executiveDysfunction: 6,
-  },
-  {
-    id: "3",
-    timestamp: new Date(Date.now() - 86400000 * 4),
-    mood: 8,
-    energy: 7,
-    brainFog: 2,
-    sensoryOverload: 2,
-    executiveDysfunction: 3,
-  },
-  {
-    id: "4",
-    timestamp: new Date(Date.now() - 86400000 * 3),
-    mood: 5,
-    energy: 3,
-    brainFog: 7,
-    sensoryOverload: 6,
-    executiveDysfunction: 7,
-  },
-  {
-    id: "5",
-    timestamp: new Date(Date.now() - 86400000 * 2),
-    mood: 6,
-    energy: 5,
-    brainFog: 4,
-    sensoryOverload: 3,
-    executiveDysfunction: 5,
-  },
-  {
-    id: "6",
-    timestamp: new Date(Date.now() - 86400000),
-    mood: 7,
-    energy: 6,
-    brainFog: 3,
-    sensoryOverload: 2,
-    executiveDysfunction: 4,
-  },
-];
-
 const DEFAULT_QUICK_LOG_ACTIONS: QuickLogAction[] = [
   { id: "1", name: "Morning Meds", icon: "sun", category: "medication", enabled: true },
   { id: "2", name: "Evening Meds", icon: "moon", category: "medication", enabled: true },
   { id: "3", name: "Drank Water", icon: "droplet", category: "habit", enabled: true },
   { id: "4", name: "Took a Break", icon: "coffee", category: "habit", enabled: true },
   { id: "5", name: "Went Outside", icon: "wind", category: "habit", enabled: true },
-];
-
-const DEFAULT_INSIGHTS: PatternInsight[] = [
-  {
-    id: "1",
-    title: "Energy Pattern",
-    description: "Your energy tends to be higher in the morning. Consider scheduling demanding tasks before noon.",
-    icon: "battery-charging",
-    type: "positive",
-  },
-  {
-    id: "2",
-    title: "Sensory Sensitivity",
-    description: "Lower sensory overload on days with better sleep. A weighted blanket might help.",
-    icon: "moon",
-    type: "neutral",
-  },
-  {
-    id: "3",
-    title: "Focus Correlation",
-    description: "Brain fog increases when you skip breaks. Try the Pomodoro technique.",
-    icon: "clock",
-    type: "warning",
-  },
 ];
 
 const serializeData = (data: any): string => {
@@ -501,7 +557,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [deviceStorageEnabled, setDeviceStorageEnabledState] =
     useState(true);
-  const [symptomEntries, setSymptomEntries] = useState<SymptomEntry[]>(SAMPLE_ENTRIES);
+  const [symptomEntries, setSymptomEntries] = useState<SymptomEntry[]>([]);
   const [clipboardItems, setClipboardItems] = useState<ClipboardItem[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -521,15 +577,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [groupTodos, setGroupTodosState] = useState(true);
   const [onboardingComplete, setOnboardingCompleteState] = useState(false);
   const [onboardingProfile, setOnboardingProfileState] = useState<OnboardingProfile | null>(null);
-  const [userStats, setUserStats] = useState<UserStats>({
-    ...INITIAL_STATS,
-    totalEntries: SAMPLE_ENTRIES.length,
-    currentStreak: 6,
-    longestStreak: 6,
-    xp: 150,
-    level: 2,
-  });
-  const [insights] = useState<PatternInsight[]>(DEFAULT_INSIGHTS);
+  const [userStats, setUserStats] = useState<UserStats>(INITIAL_STATS);
+  const [exerciseEntries, setExerciseEntries] = useState<ExerciseEntry[]>([]);
+  const [intakeEntries, setIntakeEntries] = useState<IntakeEntry[]>([]);
+  const [intakeConfig, setIntakeConfigState] = useState<IntakeConfig>(DEFAULT_INTAKE_CONFIG);
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
+  const [periodDays, setPeriodDays] = useState<PeriodDay[]>([]);
+  const [dayNotes, setDayNotes] = useState<DayNote[]>([]);
+  const [ageRange, setAgeRangeState] = useState<AgeRange | null>(null);
+  const [insightSettings, setInsightSettings] = useState<InsightSettings>(DEFAULT_INSIGHT_SETTINGS);
+  const [dataResetCount, setDataResetCount] = useState(0);
   const [userName, setUserNameState] = useState("");
   const [profileImageUri, setProfileImageUriState] = useState<string | null>(null);
   const [widgetOrder, setWidgetOrderState] = useState<WidgetId[]>(DEFAULT_WIDGET_ORDER);
@@ -563,6 +620,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setUserNameState("");
     setProfileImageUriState(null);
     setWidgetOrderState(DEFAULT_WIDGET_ORDER);
+    setExerciseEntries([]);
+    setIntakeEntries([]);
+    setIntakeConfigState(DEFAULT_INTAKE_CONFIG);
+    setFocusSessions([]);
+    setPeriodDays([]);
+    setDayNotes([]);
+    setAgeRangeState(null);
+    setInsightSettings(DEFAULT_INSIGHT_SETTINGS);
+    setDataResetCount((count) => count + 1);
   }, []);
 
   const clearAllDeviceData = useCallback(async () => {
@@ -634,6 +700,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         storedGroupTodos,
         storedOnboardingComplete,
         storedOnboardingProfile,
+        storedExercise,
+        storedIntake,
+        storedIntakeConfig,
+        storedFocus,
+        storedPeriodDays,
+        storedDayNotes,
+        storedAgeRange,
+        storedInsightSettings,
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.symptomEntries),
         AsyncStorage.getItem(STORAGE_KEYS.clipboardItems),
@@ -659,6 +733,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.groupTodos),
         AsyncStorage.getItem(STORAGE_KEYS.onboardingComplete),
         AsyncStorage.getItem(STORAGE_KEYS.onboardingProfile),
+        AsyncStorage.getItem(STORAGE_KEYS.exerciseEntries),
+        AsyncStorage.getItem(STORAGE_KEYS.intakeEntries),
+        AsyncStorage.getItem(STORAGE_KEYS.intakeConfig),
+        AsyncStorage.getItem(STORAGE_KEYS.focusSessions),
+        AsyncStorage.getItem(STORAGE_KEYS.periodDays),
+        AsyncStorage.getItem(STORAGE_KEYS.dayNotes),
+        AsyncStorage.getItem(STORAGE_KEYS.ageRange),
+        AsyncStorage.getItem(STORAGE_KEYS.insightSettings),
       ]);
 
       if (storedSymptoms) setSymptomEntries(deserializeData(storedSymptoms));
@@ -755,6 +837,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setOnboardingProfileState(deserializeData(storedOnboardingProfile));
         } catch {
           setOnboardingProfileState(null);
+        }
+      }
+
+      if (storedExercise) setExerciseEntries(deserializeData(storedExercise));
+      if (storedIntake) setIntakeEntries(deserializeData(storedIntake));
+      if (storedFocus) setFocusSessions(deserializeData(storedFocus));
+      if (storedPeriodDays) setPeriodDays(deserializeData(storedPeriodDays));
+      if (storedDayNotes) setDayNotes(deserializeData(storedDayNotes));
+      if (storedAgeRange) setAgeRangeState(storedAgeRange as AgeRange);
+
+      if (storedIntakeConfig) {
+        try {
+          setIntakeConfigState({ ...DEFAULT_INTAKE_CONFIG, ...JSON.parse(storedIntakeConfig) });
+        } catch {
+          setIntakeConfigState(DEFAULT_INTAKE_CONFIG);
+        }
+      }
+
+      if (storedInsightSettings) {
+        try {
+          setInsightSettings({ ...DEFAULT_INSIGHT_SETTINGS, ...JSON.parse(storedInsightSettings) });
+        } catch {
+          setInsightSettings(DEFAULT_INSIGHT_SETTINGS);
         }
       }
     } catch (error) {
@@ -863,7 +968,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const toggleTodo = useCallback((id: string) => {
     setTodos((prev) => {
       const updated = prev.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+        todo.id === id
+          ? {
+              ...todo,
+              completed: !todo.completed,
+              completedAt: todo.completed ? undefined : new Date(),
+            }
+          : todo
       );
       saveToStorage(STORAGE_KEYS.todos, updated);
       return updated;
@@ -1238,6 +1349,156 @@ export function DataProvider({ children }: { children: ReactNode }) {
     saveToStorage(STORAGE_KEYS.onboardingComplete, "false");
   }, [saveToStorage]);
 
+  const addExerciseEntry = useCallback(
+    (entry: Omit<ExerciseEntry, "id" | "timestamp">, timestamp?: Date) => {
+      setExerciseEntries((prev) => {
+        const newEntry: ExerciseEntry = {
+          ...entry,
+          id: Date.now().toString(),
+          timestamp: timestamp ? new Date(timestamp) : new Date(),
+        };
+        const updated = [newEntry, ...prev];
+        saveToStorage(STORAGE_KEYS.exerciseEntries, updated);
+        return updated;
+      });
+    },
+    [saveToStorage],
+  );
+
+  const removeExerciseEntry = useCallback((id: string) => {
+    setExerciseEntries((prev) => {
+      const updated = prev.filter((e) => e.id !== id);
+      saveToStorage(STORAGE_KEYS.exerciseEntries, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const addIntakeEntry = useCallback(
+    (entry: Omit<IntakeEntry, "id" | "timestamp">, timestamp?: Date) => {
+      setIntakeEntries((prev) => {
+        const newEntry: IntakeEntry = {
+          ...entry,
+          id: Date.now().toString(),
+          timestamp: timestamp ? new Date(timestamp) : new Date(),
+        };
+        const updated = [newEntry, ...prev];
+        saveToStorage(STORAGE_KEYS.intakeEntries, updated);
+        return updated;
+      });
+    },
+    [saveToStorage],
+  );
+
+  const removeIntakeEntry = useCallback((id: string) => {
+    setIntakeEntries((prev) => {
+      const updated = prev.filter((e) => e.id !== id);
+      saveToStorage(STORAGE_KEYS.intakeEntries, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const setIntakeConfig = useCallback((config: IntakeConfig) => {
+    setIntakeConfigState(config);
+    saveToStorage(STORAGE_KEYS.intakeConfig, JSON.stringify(config));
+  }, [saveToStorage]);
+
+  const addFocusSession = useCallback((minutes: number) => {
+    setFocusSessions((prev) => {
+      const session: FocusSession = { id: Date.now().toString(), endedAt: new Date(), minutes };
+      const updated = [session, ...prev];
+      saveToStorage(STORAGE_KEYS.focusSessions, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const setPeriodDay = useCallback((date: string, flow?: PeriodFlow) => {
+    setPeriodDays((prev) => {
+      const updated = [...prev.filter((d) => d.date !== date), { date, flow }].sort((a, b) =>
+        a.date.localeCompare(b.date),
+      );
+      saveToStorage(STORAGE_KEYS.periodDays, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removePeriodDay = useCallback((date: string) => {
+    setPeriodDays((prev) => {
+      const updated = prev.filter((d) => d.date !== date);
+      saveToStorage(STORAGE_KEYS.periodDays, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const saveDayNotes = useCallback(
+    (dates: string[], note: Omit<DayNote, "date" | "createdAt">) => {
+      setDayNotes((prev) => {
+        const dateSet = new Set(dates);
+        const createdAt = new Date();
+        const updated = [
+          ...prev.filter((n) => !dateSet.has(n.date)),
+          ...dates.map((date) => ({ ...note, date, createdAt })),
+        ].sort((a, b) => a.date.localeCompare(b.date));
+        saveToStorage(STORAGE_KEYS.dayNotes, updated);
+        return updated;
+      });
+    },
+    [saveToStorage],
+  );
+
+  const setAgeRange = useCallback((range: AgeRange | null) => {
+    setAgeRangeState(range);
+    saveToStorage(STORAGE_KEYS.ageRange, range ?? "");
+  }, [saveToStorage]);
+
+  const updateInsightSettings = useCallback((changes: Partial<InsightSettings>) => {
+    setInsightSettings((prev) => {
+      const updated = { ...prev, ...changes };
+      saveToStorage(STORAGE_KEYS.insightSettings, JSON.stringify(updated));
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const updateCustomTracker = useCallback((id: string, changes: Partial<CustomTracker>) => {
+    setCustomTrackers((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, ...changes } : t));
+      saveToStorage(STORAGE_KEYS.customTrackers, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const removeCustomTrackerEntry = useCallback((id: string) => {
+    setCustomTrackerEntries((prev) => {
+      const updated = prev.filter((e) => e.id !== id);
+      saveToStorage(STORAGE_KEYS.customTrackerEntries, updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  const loadDemoData = useCallback((data: DemoDataBundle) => {
+    setSymptomEntries(data.symptomEntries);
+    setQuickLogActions(data.quickLogActions);
+    setQuickLogEntries(data.quickLogEntries);
+    setTodos(data.todos);
+    setCalendarEvents(data.calendarEvents);
+    setExerciseEntries(data.exerciseEntries);
+    setIntakeEntries(data.intakeEntries);
+    setFocusSessions(data.focusSessions);
+    setPeriodDays(data.periodDays);
+    setCustomTrackers(data.customTrackers);
+    setCustomTrackerEntries(data.customTrackerEntries);
+    saveToStorage(STORAGE_KEYS.symptomEntries, data.symptomEntries);
+    saveToStorage(STORAGE_KEYS.quickLogActions, data.quickLogActions);
+    saveToStorage(STORAGE_KEYS.quickLogEntries, data.quickLogEntries);
+    saveToStorage(STORAGE_KEYS.todos, data.todos);
+    saveToStorage(STORAGE_KEYS.calendarEvents, data.calendarEvents);
+    saveToStorage(STORAGE_KEYS.exerciseEntries, data.exerciseEntries);
+    saveToStorage(STORAGE_KEYS.intakeEntries, data.intakeEntries);
+    saveToStorage(STORAGE_KEYS.focusSessions, data.focusSessions);
+    saveToStorage(STORAGE_KEYS.periodDays, data.periodDays);
+    saveToStorage(STORAGE_KEYS.customTrackers, data.customTrackers);
+    saveToStorage(STORAGE_KEYS.customTrackerEntries, data.customTrackerEntries);
+  }, [saveToStorage]);
+
   return (
     <DataContext.Provider
       value={{
@@ -1290,7 +1551,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         removeAlarmSchedule,
         toggleAlarmSchedule,
         userStats,
-        insights,
         userName,
         setUserName,
         profileImageUri,
@@ -1320,6 +1580,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deviceStorageEnabled,
         setDeviceStorageEnabled,
         clearAllDeviceData,
+        dataResetCount,
+        exerciseEntries,
+        addExerciseEntry,
+        removeExerciseEntry,
+        intakeEntries,
+        addIntakeEntry,
+        removeIntakeEntry,
+        intakeConfig,
+        setIntakeConfig,
+        focusSessions,
+        addFocusSession,
+        periodDays,
+        setPeriodDay,
+        removePeriodDay,
+        dayNotes,
+        saveDayNotes,
+        ageRange,
+        setAgeRange,
+        insightSettings,
+        updateInsightSettings,
+        updateCustomTracker,
+        removeCustomTrackerEntry,
+        loadDemoData,
         isLoading,
       }}
     >

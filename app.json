@@ -19,7 +19,28 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.spikeyprofile.app"
+      "package": "com.spikeyprofile.app",
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY",
+        "android.permission.health.READ_RESPIRATORY_RATE",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BODY_TEMPERATURE",
+        "android.permission.health.READ_BASAL_BODY_TEMPERATURE",
+        "android.permission.health.READ_MENSTRUATION",
+        "android.permission.health.READ_OVULATION_TEST",
+        "android.permission.health.READ_CERVICAL_MUCUS",
+        "android.permission.health.READ_HYDRATION",
+        "android.permission.health.READ_NUTRITION",
+        "android.permission.health.READ_MINDFULNESS",
+        "android.permission.health.READ_HEALTH_DATA_HISTORY"
+      ]
     },
     "web": {
       "output": "single",
@@ -39,7 +60,37 @@
         }
       ],
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "SpikeyProfile reads only the health data you choose (like sleep, steps, heart rate and cycle) to find patterns in how you feel. It stays on your phone.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SpikeyProfile uses your location to share it with your emergency contacts when you ask, and, if you turn on weather, to look up the weather for your rough area (rounded to about 10 km)."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "SpikeyProfile reads your step count, if you turn this on in Settings, to look for patterns in how you feel."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true

@@ -18,6 +18,11 @@ import { SymptomSlider } from "@/modules/SymptomTracker/SymptomSlider";
 import { StarRating } from "@/modules/SymptomTracker/StarRating";
 import { ColorPicker } from "@/modules/SymptomTracker/ColorPicker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Stepper } from "@/components/SheetModal";
+import { ExerciseSheet } from "@/modules/Exercise/ExerciseSheet";
+import { IntakeSheet } from "@/modules/Intake/IntakeSheet";
+import { PeriodSheet } from "@/modules/CycleTracker/PeriodSheet";
+import { TrackerLogList } from "@/modules/CustomTrackers/TrackerLogList";
 
 type InputType = "slider" | "stars" | "color";
 
@@ -68,6 +73,11 @@ export default function TrackScreen() {
     executiveDysfunction: "slider",
   });
   const [newTodoText, setNewTodoText] = useState("");
+  const [sleepOpen, setSleepOpen] = useState(false);
+  const [sleepHours, setSleepHours] = useState(7.5);
+  const [sleepQuality, setSleepQuality] = useState(5);
+  const [sleepTouched, setSleepTouched] = useState({ hours: false, quality: false });
+  const [openSheet, setOpenSheet] = useState<"exercise" | "intake" | "period" | null>(null);
   const [showInputTypeModal, setShowInputTypeModal] = useState(false);
   const [selectedSymptomForInputType, setSelectedSymptomForInputType] = useState<string | null>(null);
 
@@ -86,7 +96,17 @@ export default function TrackScreen() {
   };
 
   const handleSave = () => {
-    addSymptomEntry(values, entryTimestamp);
+    // Sleep is only saved if it was actually filled in, so defaults never pose as real data.
+    addSymptomEntry(
+      {
+        ...values,
+        source: "manual",
+        ...(sleepTouched.hours ? { sleepHours } : {}),
+        ...(sleepTouched.quality ? { sleepQuality } : {}),
+      },
+      entryTimestamp,
+    );
+    setSleepTouched({ hours: false, quality: false });
     showLogged("Symptom entry logged", "activity");
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -267,6 +287,62 @@ export default function TrackScreen() {
         })}
       </View>
 
+      <Spacer height={Spacing.md} />
+
+      <Pressable
+        onPress={() => {
+          if (Platform.OS !== "web") Haptics.selectionAsync();
+          setSleepOpen((v) => !v);
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: sleepOpen }}
+        style={[styles.symptomHeader, { backgroundColor: theme.surfaceVariant }]}
+      >
+        <View style={styles.symptomHeaderLeft}>
+          <Feather name="moon" size={14} color={theme.primary} />
+          <ThemedText type="small" style={{ fontWeight: "600", marginLeft: Spacing.xs }}>
+            Last night’s sleep (optional)
+          </ThemedText>
+        </View>
+        <Feather name={sleepOpen ? "chevron-up" : "chevron-down"} size={16} color={theme.textSecondary} />
+      </Pressable>
+      {sleepOpen ? (
+        <View style={{ marginTop: Spacing.sm, gap: Spacing.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              Hours slept{sleepTouched.hours ? "" : " (not set)"}
+            </ThemedText>
+            <Stepper
+              label="Hours slept"
+              value={sleepHours}
+              onChange={(v) => {
+                setSleepHours(v);
+                setSleepTouched((t) => ({ ...t, hours: true }));
+              }}
+              step={0.5}
+              min={0}
+              max={14}
+              format={(v) => `${v}h`}
+            />
+          </View>
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            Sleep quality{sleepTouched.quality ? `: ${sleepQuality}/10` : " (not set)"}
+          </ThemedText>
+          <SymptomSlider
+            label=""
+            icon="moon"
+            value={sleepQuality}
+            onValueChange={(v) => {
+              setSleepQuality(v);
+              setSleepTouched((t) => ({ ...t, quality: true }));
+            }}
+            lowLabel="Poor sleep"
+            highLabel="Great sleep"
+            compact
+          />
+        </View>
+      ) : null}
+
       <Spacer height={Spacing.lg} />
 
       <Pressable
@@ -293,6 +369,38 @@ export default function TrackScreen() {
       contentContainerStyle={[styles.pageContent, { paddingBottom: paddingBottom + Spacing.xl }]}
       showsVerticalScrollIndicator={false}
     >
+      {(isModuleEnabled("exercise") || isModuleEnabled("intake") || isModuleEnabled("cycleTracker")) ? (
+        <View style={[styles.quickLogGrid, { marginBottom: Spacing.lg }]}>
+          {isModuleEnabled("exercise") ? (
+            <Pressable
+              onPress={() => setOpenSheet("exercise")}
+              style={({ pressed }) => [styles.extraChip, { backgroundColor: pressed ? theme.primary : theme.surfaceVariant }]}
+            >
+              <Feather name="trending-up" size={18} color={theme.primary} />
+              <ThemedText type="small" style={{ fontWeight: "600" }}>Exercise</ThemedText>
+            </Pressable>
+          ) : null}
+          {isModuleEnabled("intake") ? (
+            <Pressable
+              onPress={() => setOpenSheet("intake")}
+              style={({ pressed }) => [styles.extraChip, { backgroundColor: pressed ? theme.primary : theme.surfaceVariant }]}
+            >
+              <Feather name="coffee" size={18} color={theme.primary} />
+              <ThemedText type="small" style={{ fontWeight: "600" }}>Food & drink</ThemedText>
+            </Pressable>
+          ) : null}
+          {isModuleEnabled("cycleTracker") ? (
+            <Pressable
+              onPress={() => setOpenSheet("period")}
+              style={({ pressed }) => [styles.extraChip, { backgroundColor: pressed ? theme.primary : theme.surfaceVariant }]}
+            >
+              <Feather name="droplet" size={18} color={theme.primary} />
+              <ThemedText type="small" style={{ fontWeight: "600" }}>Period today</ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
         <ThemedText type="body" style={{ color: theme.textSecondary }}>
           Tap to log instantly
@@ -409,6 +517,15 @@ export default function TrackScreen() {
             No quick log actions yet. Add some in Settings.
           </ThemedText>
         </View>
+      ) : null}
+
+      {isModuleEnabled("customTrackers") ? (
+        <>
+          <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
+            My trackers
+          </ThemedText>
+          <TrackerLogList />
+        </>
       ) : null}
     </ScrollView>
   );
@@ -576,6 +693,10 @@ export default function TrackScreen() {
         />
       )}
 
+      <ExerciseSheet visible={openSheet === "exercise"} onClose={() => setOpenSheet(null)} />
+      <IntakeSheet visible={openSheet === "intake"} onClose={() => setOpenSheet(null)} />
+      <PeriodSheet visible={openSheet === "period"} onClose={() => setOpenSheet(null)} />
+
       <Modal
         visible={showInputTypeModal}
         animationType="slide"
@@ -699,6 +820,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.sm,
+  },
+  extraChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    minHeight: 48,
+    borderRadius: BorderRadius.md,
   },
   quickLogChip: {
     width: "30%",

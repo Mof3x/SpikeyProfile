@@ -9,13 +9,23 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
-import { useData } from "@/core/DataContext";
+import { useData, type AgeRange } from "@/core/DataContext";
+import { ChoiceChip, sheetStyles } from "@/components/SheetModal";
 import { Spacing, BorderRadius } from "@/constants/theme";
+
+const AGE_RANGES: { id: AgeRange; label: string }[] = [
+  { id: "16-24", label: "16–24" },
+  { id: "25-34", label: "25–34" },
+  { id: "35-44", label: "35–44" },
+  { id: "45-54", label: "45–54" },
+  { id: "55+", label: "55+" },
+  { id: "preferNot", label: "Prefer not to say" },
+];
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
-  const { userName, userStats, profileImageUri } = useData();
+  const { userName, userStats, profileImageUri, ageRange, setAgeRange } = useData();
 
   const displayName = userName || "Your profile";
 
@@ -41,6 +51,29 @@ export default function ProfileScreen() {
               Level {userStats.level} • {userStats.xp} XP
             </ThemedText>
           </View>
+        </View>
+      </Card>
+
+      <Spacer height={Spacing.lg} />
+
+      <Card>
+        <ThemedText type="h4" style={styles.sectionTitle}>Age range</ThemedText>
+        <ThemedText type="small" style={{ color: theme.textSecondary }}>
+          Optional. Used only to adapt things like cycle predictions (cycles often vary more from your mid-40s). It
+          isn’t treated as a pattern, because it doesn’t change from one day to the next.
+        </ThemedText>
+        <View style={[sheetStyles.chips, { marginTop: Spacing.md }]}>
+          {AGE_RANGES.map((r) => (
+            <ChoiceChip
+              key={r.id}
+              label={r.label}
+              selected={ageRange === r.id}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAgeRange(ageRange === r.id ? null : r.id);
+              }}
+            />
+          ))}
         </View>
       </Card>
 

@@ -4,14 +4,14 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { useData } from "@/core/DataContext";
+import { useAnalytics } from "@/core/AnalyticsContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 export function QuickInsightCard() {
   const { theme } = useTheme();
-  const { insights } = useData();
+  const { result, wordsFor } = useAnalytics();
 
-  const topInsight = insights[0];
+  const topInsight = result.insights[0];
 
   if (!topInsight) {
     return null;
@@ -20,7 +20,12 @@ export function QuickInsightCard() {
   return (
     <View style={[styles.container, { backgroundColor: theme.surface }]}>
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: theme.surfaceVariant }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: theme.surfaceVariant },
+          ]}
+        >
           <Feather name="zap" size={18} color={theme.accent} />
         </View>
         <ThemedText type="h4" style={styles.title}>
@@ -31,7 +36,10 @@ export function QuickInsightCard() {
       <View
         style={[
           styles.insightContent,
-          { backgroundColor: theme.surfaceVariant, borderLeftColor: theme.accent },
+          {
+            backgroundColor: theme.surfaceVariant,
+            borderLeftColor: theme.accent,
+          },
         ]}
       >
         <Feather name={topInsight.icon as any} size={20} color={theme.accent} />
@@ -42,9 +50,9 @@ export function QuickInsightCard() {
           <ThemedText
             type="small"
             style={[styles.insightDescription, { color: theme.textSecondary }]}
-            numberOfLines={2}
+            numberOfLines={3}
           >
-            {topInsight.description}
+            {wordsFor(topInsight)}
           </ThemedText>
         </View>
       </View>

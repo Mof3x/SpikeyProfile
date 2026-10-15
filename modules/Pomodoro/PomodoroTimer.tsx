@@ -42,7 +42,7 @@ const BACKGROUNDS = [
 
 export function PomodoroTimerCard() {
   const { theme, typography } = useTheme();
-  const { userStats } = useData();
+  const { userStats, addFocusSession } = useData();
   const { isModuleEnabled } = useModules();
   const gamificationEnabled = isModuleEnabled("gamification");
 
@@ -91,6 +91,7 @@ export function PomodoroTimerCard() {
     setIsRunning(false);
 
     if (!isBreak) {
+      addFocusSession(settings.workMinutes);
       setSessionsCompleted((prev) => prev + 1);
       const isLongBreak = (sessionsCompleted + 1) % settings.sessionsBeforeLongBreak === 0;
       setTimeLeft(isLongBreak ? settings.longBreakMinutes * 60 : settings.breakMinutes * 60);
@@ -99,7 +100,7 @@ export function PomodoroTimerCard() {
       setTimeLeft(settings.workMinutes * 60);
       setIsBreak(false);
     }
-  }, [isBreak, sessionsCompleted, settings]);
+  }, [isBreak, sessionsCompleted, settings, addFocusSession]);
 
   const toggleTimer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

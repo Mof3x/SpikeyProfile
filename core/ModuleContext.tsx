@@ -15,7 +15,10 @@ export type ModuleId =
   | "customTrackers"
   | "alarms"
   | "countdownTimer"
-  | "countUpTimer";
+  | "countUpTimer"
+  | "exercise"
+  | "intake"
+  | "cycleTracker";
 
 export interface ModuleConfig {
   id: ModuleId;
@@ -101,7 +104,7 @@ const DEFAULT_MODULES: ModuleConfig[] = [
     name: "Custom Trackers",
     description: "Create your own things to track",
     icon: "sliders",
-    enabled: false,
+    enabled: true,
   },
   {
     id: "alarms",
@@ -123,6 +126,27 @@ const DEFAULT_MODULES: ModuleConfig[] = [
     description: "Track time since last medication, meal, or activity",
     icon: "activity",
     enabled: true,
+  },
+  {
+    id: "exercise",
+    name: "Exercise",
+    description: "Log workouts and movement in a few taps",
+    icon: "trending-up",
+    enabled: true,
+  },
+  {
+    id: "intake",
+    name: "Food & Drink",
+    description: "Quick-log meals, drinks and (optionally) substances",
+    icon: "coffee",
+    enabled: true,
+  },
+  {
+    id: "cycleTracker",
+    name: "Cycle Tracker",
+    description: "Log period days and see how your cycle links to how you feel",
+    icon: "droplet",
+    enabled: false,
   },
 ];
 

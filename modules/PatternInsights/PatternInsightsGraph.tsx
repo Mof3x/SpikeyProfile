@@ -1,100 +1,77 @@
 import React, { useMemo } from "react";
-import { StyleSheet, View, Dimensions } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { BarChart } from "react-native-chart-kit";
 
 import { Card } from "@/components/Card";
 import { ThemedText } from "@/components/ThemedText";
 import Spacer from "@/components/Spacer";
 import { useTheme } from "@/hooks/useTheme";
-import { useData } from "@/core/DataContext";
+import { useAnalytics } from "@/core/AnalyticsContext";
+import { FACTOR_GROUP_LABELS, type FactorGroup } from "@/core/analytics/types";
+import type { CorrelationResult } from "@/core/analytics/correlations";
+import { strengthDots } from "@/core/analytics/text";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
-const screenWidth = Dimensions.get("window").width;
+const MAX_SHOWN = 8;
 
-interface CorrelationData {
-  factor1: string;
-  factor2: string;
-  correlation: number;
-  description: string;
+function StrengthDots({
+  rho,
+  color,
+  empty,
+}: {
+  rho: number;
+  color: string;
+  empty: string;
+}) {
+  const filled = strengthDots(rho);
+  const label =
+    filled === 3 ? "Strong link" : filled === 2 ? "Moderate link" : "Weak link";
+  return (
+    <View style={styles.dots} accessibilityLabel={label}>
+      {[1, 2, 3].map((i) => (
+        <View
+          key={i}
+          style={[styles.dot, { backgroundColor: i <= filled ? color : empty }]}
+        />
+      ))}
+    </View>
+  );
 }
 
 export function PatternInsightsGraph() {
   const { theme } = useTheme();
-  const { symptomEntries, quickLogEntries } = useData();
+  const { result, wordsFor, showNumbers } = useAnalytics();
+  const { correlations, progress } = result;
 
-  const correlations: CorrelationData[] = useMemo(() => {
-    const mockCorrelations: CorrelationData[] = [
-      {
-        factor1: "Sleep",
-        factor2: "Energy",
-        correlation: 0.72,
-        description: "Better sleep tends to improve energy levels",
-      },
-      {
-        factor1: "Medication",
-        factor2: "Focus",
-        correlation: 0.65,
-        description: "Consistent meds may help with focus",
-      },
-      {
-        factor1: "Exercise",
-        factor2: "Mood",
-        correlation: 0.58,
-        description: "Activity seems linked to better mood",
-      },
-      {
-        factor1: "Screen Time",
-        factor2: "Brain Fog",
-        correlation: -0.45,
-        description: "More screens may increase brain fog",
-      },
-      {
-        factor1: "Hydration",
-        factor2: "Energy",
-        correlation: 0.42,
-        description: "Staying hydrated might boost energy",
-      },
-    ];
+  const grouped = useMemo(() => {
+    const shown = correlations.results.slice(0, MAX_SHOWN);
+    const groups = new Map<FactorGroup, CorrelationResult[]>();
+    for (const c of shown)
+      groups.set(c.factor.group, [...(groups.get(c.factor.group) ?? []), c]);
+    return [...groups.entries()];
+  }, [correlations.results]);
 
-    return mockCorrelations;
-  }, [symptomEntries, quickLogEntries]);
-
-  const chartData = {
-    labels: correlations.map((c) => c.factor1.slice(0, 6)),
-    datasets: [
-      {
-        data: correlations.map((c) => c.correlation * 100),
-      },
-    ],
-  };
-
-  const getCorrelationColor = (value: number) => {
-    if (value >= 0.6) return theme.success;
-    if (value >= 0.4) return theme.primary;
-    if (value >= 0) return theme.accent;
-    return theme.error;
-  };
-
-  const getCorrelationLabel = (value: number) => {
-    const absValue = Math.abs(value);
-    if (absValue >= 0.7) return "Strong";
-    if (absValue >= 0.5) return "Moderate";
-    if (absValue >= 0.3) return "Weak";
-    return "Minimal";
-  };
+  const colorFor = (c: CorrelationResult) =>
+    c.good ? theme.success : theme.accent;
+  const needed = progress.patternDaysNeeded;
+  const enoughDays = progress.daysLogged >= needed;
 
   return (
     <Card style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: theme.primary + "20" }]}>
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: theme.primary + "20" },
+            ]}
+          >
             <Feather name="git-branch" size={18} color={theme.primary} />
           </View>
           <View>
             <ThemedText type="h3">Pattern Correlations</ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              How your habits connect
+              How your habits, body and surroundings connect
             </ThemedText>
           </View>
         </View>
@@ -102,111 +79,144 @@ export function PatternInsightsGraph() {
 
       <Spacer height={Spacing.lg} />
 
-      <View style={styles.chartWrapper}>
-        <BarChart
-          data={chartData}
-          width={screenWidth - Spacing.lg * 2 - Spacing.cardPadding * 2}
-          height={160}
-          yAxisLabel=""
-          yAxisSuffix="%"
-          chartConfig={{
-            backgroundColor: "transparent",
-            backgroundGradientFrom: theme.surface,
-            backgroundGradientTo: theme.surface,
-            decimalPlaces: 0,
-            color: (opacity = 1) => theme.primary,
-            labelColor: () => theme.textSecondary,
-            style: {
-              borderRadius: BorderRadius.md,
-            },
-            barPercentage: 0.6,
-            propsForBackgroundLines: {
-              strokeDasharray: "",
-              stroke: theme.divider,
-              strokeWidth: 1,
-            },
-          }}
-          style={styles.chart}
-          fromZero
-          showValuesOnTopOfBars
-          withInnerLines={false}
-        />
-      </View>
-
-      <Spacer height={Spacing.lg} />
-
-      <View style={[styles.divider, { backgroundColor: theme.divider }]} />
-
-      <Spacer height={Spacing.lg} />
-
-      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
-        Discovered Patterns
-      </ThemedText>
-
-      {correlations.slice(0, 3).map((item, index) => (
-        <View
-          key={index}
-          style={[
-            styles.correlationItem,
-            index > 0 && { marginTop: Spacing.md },
-            { backgroundColor: theme.surfaceVariant },
-          ]}
-        >
-          <View style={styles.correlationHeader}>
-            <View style={styles.factorPair}>
-              <ThemedText type="body" style={{ fontWeight: "600" }}>
-                {item.factor1}
-              </ThemedText>
-              <Feather
-                name={item.correlation >= 0 ? "arrow-right" : "arrow-left"}
-                size={14}
-                color={theme.textSecondary}
-                style={{ marginHorizontal: Spacing.xs }}
-              />
-              <ThemedText type="body" style={{ fontWeight: "600" }}>
-                {item.factor2}
-              </ThemedText>
-            </View>
-            <View
-              style={[
-                styles.correlationBadge,
-                { backgroundColor: getCorrelationColor(item.correlation) + "20" },
-              ]}
-            >
-              <ThemedText
-                type="caption"
-                style={{ color: getCorrelationColor(item.correlation), fontWeight: "600" }}
-              >
-                {getCorrelationLabel(item.correlation)}
-              </ThemedText>
-            </View>
-          </View>
-          <ThemedText
-            type="small"
-            style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
-          >
-            {item.description}
+      {!enoughDays ? (
+        <View>
+          <ThemedText type="body">
+            {showNumbers
+              ? `${progress.daysLogged} of ${needed} days of check-ins so far.`
+              : "Keep logging. Patterns start to appear after about two weeks of check-ins."}
           </ThemedText>
-          <View style={[styles.correlationBar, { backgroundColor: theme.divider }]}>
+          <View
+            style={[styles.progressTrack, { backgroundColor: theme.divider }]}
+            accessibilityRole="progressbar"
+            accessibilityValue={{
+              min: 0,
+              max: needed,
+              now: progress.daysLogged,
+            }}
+          >
             <View
               style={[
-                styles.correlationFill,
+                styles.progressFill,
                 {
-                  width: `${Math.abs(item.correlation) * 100}%`,
-                  backgroundColor: getCorrelationColor(item.correlation),
+                  width: `${Math.min(100, (progress.daysLogged / needed) * 100)}%`,
+                  backgroundColor: theme.primary,
                 },
               ]}
             />
           </View>
         </View>
-      ))}
+      ) : grouped.length === 0 ? (
+        <ThemedText type="body" style={{ color: theme.textSecondary }}>
+          {showNumbers
+            ? `${progress.testedCount} possible links checked across ${progress.analysableFactors} things you track. None were consistent enough to show yet.`
+            : "Nothing stands out strongly yet. That's normal, and the app keeps checking as you log."}
+        </ThemedText>
+      ) : (
+        grouped.map(([group, items], gi) => (
+          <View
+            key={group}
+            style={gi > 0 ? { marginTop: Spacing.lg } : undefined}
+          >
+            <ThemedText
+              type="caption"
+              style={[styles.groupLabel, { color: theme.textSecondary }]}
+            >
+              {FACTOR_GROUP_LABELS[group].toUpperCase()}
+            </ThemedText>
+            {items.map((item, index) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.correlationItem,
+                  index > 0 && { marginTop: Spacing.sm },
+                  { backgroundColor: theme.surfaceVariant },
+                ]}
+              >
+                <View style={styles.correlationHeader}>
+                  <View style={styles.factorPair}>
+                    <ThemedText
+                      type="body"
+                      style={{ fontWeight: "600", flexShrink: 1 }}
+                      numberOfLines={1}
+                    >
+                      {item.factor.label}
+                    </ThemedText>
+                    <Feather
+                      name="arrow-right"
+                      size={14}
+                      color={theme.textSecondary}
+                      style={{ marginHorizontal: Spacing.xs }}
+                    />
+                    <ThemedText type="body" style={{ fontWeight: "600" }}>
+                      {item.symptom.label}
+                    </ThemedText>
+                  </View>
+                  {showNumbers ? (
+                    <View
+                      style={[
+                        styles.badge,
+                        { backgroundColor: colorFor(item) + "20" },
+                      ]}
+                    >
+                      <ThemedText
+                        type="caption"
+                        style={{ color: colorFor(item), fontWeight: "600" }}
+                      >
+                        {item.confidence === "consistent"
+                          ? "Consistent"
+                          : "Early signal"}
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <StrengthDots
+                      rho={item.rho}
+                      color={colorFor(item)}
+                      empty={theme.divider}
+                    />
+                  )}
+                </View>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
+                >
+                  {wordsFor(item)}
+                </ThemedText>
+                {showNumbers ? (
+                  <View
+                    style={[
+                      styles.correlationBar,
+                      { backgroundColor: theme.divider },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.correlationFill,
+                        {
+                          width: `${Math.abs(item.rho) * 100}%`,
+                          backgroundColor: colorFor(item),
+                        },
+                      ]}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        ))
+      )}
 
       <Spacer height={Spacing.md} />
 
       <View style={[styles.infoBox, { backgroundColor: theme.primary + "10" }]}>
         <Feather name="info" size={14} color={theme.primary} />
-        <ThemedText type="caption" style={{ color: theme.primary, marginLeft: Spacing.sm, flex: 1 }}>
-          These patterns are based on your tracked data. Keep logging to discover more connections!
+        <ThemedText
+          type="caption"
+          style={{ color: theme.primary, marginLeft: Spacing.sm, flex: 1 }}
+        >
+          These are patterns in your own logs, not proof that one thing causes
+          another. Only links that hold up across your data are shown, so
+          coincidences are filtered out.
         </ThemedText>
       </View>
     </Card>
@@ -226,6 +236,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
+    flex: 1,
   },
   iconContainer: {
     width: 36,
@@ -234,15 +245,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  chartWrapper: {
-    alignItems: "center",
-  },
-  chart: {
-    borderRadius: BorderRadius.md,
-  },
-  divider: {
-    height: 1,
-    width: "100%",
+  groupLabel: {
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
   },
   correlationItem: {
     padding: Spacing.md,
@@ -252,15 +258,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: Spacing.sm,
   },
   factorPair: {
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 1,
   },
-  correlationBadge: {
+  badge: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
+  },
+  dots: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   correlationBar: {
     height: 4,
@@ -271,6 +288,16 @@ const styles = StyleSheet.create({
   correlationFill: {
     height: "100%",
     borderRadius: 2,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    marginTop: Spacing.md,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
   },
   infoBox: {
     flexDirection: "row",

@@ -12,6 +12,9 @@ import { useTheme } from "@/hooks/useTheme";
 import { useData } from "@/core/DataContext";
 import { useModules } from "@/core/ModuleContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useAnalytics } from "@/core/AnalyticsContext";
+import { describeTimeOfDay, formatClock } from "@/core/analytics/dates";
+import { OutlookCard } from "@/modules/PatternInsights/OutlookCard";
 
 export default function DailyBriefScreen() {
   const { theme } = useTheme();
@@ -25,7 +28,11 @@ export default function DailyBriefScreen() {
     countdownTimers,
     symptomEntries,
     userName,
+    quickLogActions,
+    insightSettings,
   } = useData();
+  const { result, wordsFor, showNumbers } = useAnalytics();
+  const insightsOn = isModuleEnabled("patternInsights");
 
   const today = new Date();
   const todayStr = today.toDateString();
@@ -71,11 +78,55 @@ export default function DailyBriefScreen() {
   }, [countdownTimers]);
 
   const todaysMedLogs = useMemo(() => {
+    const meds = quickLogActions.filter((a) => a.category === "medication");
+    const ids = new Set(meds.map((a) => a.id));
+    const names = new Set(meds.map((a) => a.name.trim().toLowerCase()));
     return quickLogEntries.filter((entry) => {
       const entryDate = new Date(entry.timestamp).toDateString();
-      return entryDate === todayStr && entry.actionName.toLowerCase().includes("med");
+      return (
+        entryDate === todayStr &&
+        (ids.has(entry.actionId) || names.has(entry.actionName.trim().toLowerCase()))
+      );
     });
-  }, [quickLogEntries, todayStr]);
+  }, [quickLogEntries, quickLogActions, todayStr]);
+
+  const medNotes = useMemo(() => {
+    if (!insightsOn) return [];
+    const notes: { key: string; icon: string; text: string }[] = [];
+    for (const med of result.meds) {
+      if (med.lateToday && med.usualMinutes !== undefined) {
+        notes.push({
+          key: `late-${med.actionId}`,
+          icon: "clock",
+          text: showNumbers
+            ? `${med.name} not logged yet. You usually log it around ${formatClock(med.usualMinutes)}.`
+            : `${med.name} not logged yet. You usually log it ${describeTimeOfDay(med.usualMinutes)}.`,
+        });
+      } else if (med.daily && med.notLoggedStreak >= 3) {
+        notes.push({
+          key: `streak-${med.actionId}`,
+          icon: "info",
+          text: `${med.name} hasn't been logged for a few days. If you've been taking it, a quick log keeps your history accurate.`,
+        });
+      }
+    }
+    if (insightSettings.medSlipHeadsUp) {
+      for (const d of result.drift) {
+        if (d.headsUp) notes.push({ key: `drift-${d.actionId}`, icon: "heart", text: wordsFor(d.headsUp) });
+      }
+    }
+    return notes;
+  }, [insightsOn, result.meds, result.drift, showNumbers, wordsFor, insightSettings.medSlipHeadsUp]);
+
+  const cycleNote = useMemo(() => {
+    const c = result.cycle;
+    if (!insightsOn || !isModuleEnabled("cycleTracker") || !c.hasData || c.daysUntilNext === undefined) return null;
+    if (c.daysUntilNext < 0 || c.daysUntilNext > 4) return null;
+    const when = c.daysUntilNext <= 1 ? "very soon" : "in the next few days";
+    return showNumbers
+      ? `Period expected in about ${c.daysUntilNext} day${c.daysUntilNext === 1 ? "" : "s"}${c.irregular ? " (rough guess, your cycle varies)" : ""}.`
+      : `Your period is likely ${when}${c.irregular ? ", though your cycle varies" : ""}.`;
+  }, [insightsOn, isModuleEnabled, result.cycle, showNumbers]);
 
   const hasLoggedToday = symptomEntries.some(
     (e) => new Date(e.timestamp).toDateString() === todayStr
@@ -93,6 +144,37 @@ export default function DailyBriefScreen() {
       </View>
 
       <Spacer height={Spacing.xl} />
+
+      {insightsOn ? (
+        <>
+          <OutlookCard day="today" compact />
+          {result.forecastToday.symptoms.length > 0 ? <Spacer height={Spacing.lg} /> : null}
+        </>
+      ) : null}
+
+      {insightsOn && result.engagement.quietRisk?.warn ? (
+        <>
+          <View style={[styles.warningBox, { backgroundColor: theme.primary + "15" }]}>
+            <Feather name="pause-circle" size={16} color={theme.primary} />
+            <ThemedText type="body" style={{ color: theme.text, marginLeft: Spacing.sm, flex: 1 }}>
+              {wordsFor(result.engagement.quietRisk)}
+            </ThemedText>
+          </View>
+          <Spacer height={Spacing.lg} />
+        </>
+      ) : null}
+
+      {cycleNote ? (
+        <>
+          <View style={[styles.warningBox, { backgroundColor: theme.primary + "15" }]}>
+            <Feather name="droplet" size={16} color={theme.primary} />
+            <ThemedText type="body" style={{ color: theme.text, marginLeft: Spacing.sm, flex: 1 }}>
+              {cycleNote}
+            </ThemedText>
+          </View>
+          <Spacer height={Spacing.lg} />
+        </>
+      ) : null}
 
       <Card style={{ padding: Spacing.lg }}>
         <View style={styles.sectionHeader}>
@@ -147,9 +229,17 @@ export default function DailyBriefScreen() {
                   {log.actionName} at {new Date(log.timestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                 </ThemedText>
               </View>
-            ))}
+                ))}
           </View>
         )}
+        {medNotes.map((note) => (
+          <View key={note.key} style={[styles.listItem, { marginTop: Spacing.md, alignItems: "flex-start" }]}>
+            <Feather name={note.icon as any} size={16} color={theme.textSecondary} style={{ marginTop: 2 }} />
+            <ThemedText type="small" style={{ marginLeft: Spacing.sm, flex: 1, color: theme.textSecondary }}>
+              {note.text}
+            </ThemedText>
+          </View>
+        ))}
       </Card>
 
       <Spacer height={Spacing.lg} />

@@ -24,116 +24,8 @@ import { useThemeContext, ThemeId, FontSize } from "@/core/ThemeContext";
 import { useModules, ModuleConfig } from "@/core/ModuleContext";
 import { useData, LowSensorySettings } from "@/core/DataContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
-
-function SettingsSection({
-  title,
-  children,
-  defaultCollapsed = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultCollapsed?: boolean;
-}) {
-  const { theme } = useTheme();
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  return (
-    <View style={styles.section}>
-      <Pressable
-        onPress={() => {
-          Haptics.selectionAsync();
-          setCollapsed((prev) => !prev);
-        }}
-        style={({ pressed }) => [
-          styles.sectionHeader,
-          { opacity: pressed ? 0.7 : 1 },
-        ]}
-      >
-        <ThemedText
-          type="small"
-          style={[styles.sectionTitle, { color: theme.textSecondary }]}
-        >
-          {title}
-        </ThemedText>
-        <Feather
-          name={collapsed ? "chevron-right" : "chevron-down"}
-          size={16}
-          color={theme.textSecondary}
-        />
-      </Pressable>
-      {!collapsed ? (
-        <>
-          <Spacer height={Spacing.sm} />
-          <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
-            {children}
-          </View>
-        </>
-      ) : null}
-    </View>
-  );
-}
-
-function SettingsRow({
-  icon,
-  label,
-  description,
-  rightElement,
-  onPress,
-  isLast = false,
-}: {
-  icon: string;
-  label: string;
-  description?: string;
-  rightElement?: React.ReactNode;
-  onPress?: () => void;
-  isLast?: boolean;
-}) {
-  const { theme } = useTheme();
-
-  const content = (
-    <View
-      style={[
-        styles.row,
-        !isLast && { borderBottomWidth: 1, borderBottomColor: theme.divider },
-      ]}
-    >
-      <View
-        style={[
-          styles.iconContainer,
-          { backgroundColor: theme.surfaceVariant },
-        ]}
-      >
-        <Feather name={icon as any} size={18} color={theme.primary} />
-      </View>
-      <View style={styles.rowContent}>
-        <ThemedText type="body" style={styles.rowLabel}>
-          {label}
-        </ThemedText>
-        {description ? (
-          <ThemedText
-            type="small"
-            style={[styles.rowDescription, { color: theme.textSecondary }]}
-          >
-            {description}
-          </ThemedText>
-        ) : null}
-      </View>
-      {rightElement}
-    </View>
-  );
-
-  if (onPress) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
-  return content;
-}
+import { SettingsRow, SettingsSection } from "@/components/SettingsParts";
+import { InsightSettingsSection } from "@/modules/PatternInsights/InsightSettingsSection";
 
 function ThemePicker() {
   const { theme } = useTheme();
@@ -801,6 +693,8 @@ export default function SettingsScreen() {
           </View>
         ))}
       </SettingsSection>
+
+      <InsightSettingsSection />
 
       <DeviceStorageSettings />
 

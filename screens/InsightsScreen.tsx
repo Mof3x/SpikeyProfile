@@ -17,19 +17,30 @@ import { SpikyChart } from "@/modules/SpikyChart/SpikyChart";
 import { InsightCard } from "@/modules/PatternInsights/InsightCard";
 import { PatternInsightsGraph } from "@/modules/PatternInsights/PatternInsightsGraph";
 import { MedicationHistoryCard } from "@/modules/MedicationHistory/MedicationHistoryCard";
+import { NumbersToggle } from "@/modules/PatternInsights/NumbersToggle";
+import { OutlookCard } from "@/modules/PatternInsights/OutlookCard";
+import { LoggingPatternsCard } from "@/modules/PatternInsights/LoggingPatternsCard";
+import { useAnalytics } from "@/core/AnalyticsContext";
+import { realSymptomEntries } from "@/core/analytics/dailyFeatures";
 
 type TimeRange = "week" | "month";
 
 export default function InsightsScreen() {
   const { theme } = useTheme();
   const { isModuleEnabled } = useModules();
-  const { symptomEntries, insights, todos, customTrackerEntries } = useData();
+  const { symptomEntries, todos, customTrackerEntries } = useData();
+  const { result } = useAnalytics();
+  const insights = result.insights;
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
 
   const overviewData = useMemo(() => {
     const now = new Date();
     const daysBack = timeRange === "week" ? 7 : 30;
-    const entries = symptomEntries.slice(-daysBack);
+    // Entries are stored newest first, so filter by date rather than slicing from the end.
+    const cutoff = new Date(now);
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - (daysBack - 1));
+    const entries = realSymptomEntries(symptomEntries).filter((e) => new Date(e.timestamp) >= cutoff);
     
     if (entries.length === 0) return null;
     
@@ -79,6 +90,7 @@ export default function InsightsScreen() {
 
   return (
     <ScreenScrollView>
+      <View style={styles.topRow}>
       <View style={styles.rangeSelector}>
         <Pressable
           onPress={() => handleRangeChange("week")}
@@ -121,8 +133,24 @@ export default function InsightsScreen() {
           </ThemedText>
         </Pressable>
       </View>
+      {insightsEnabled ? <NumbersToggle /> : null}
+      </View>
 
       <Spacer height={Spacing.xl} />
+
+      {insightsEnabled && (
+        <>
+          <OutlookCard day="today" />
+          <Spacer height={Spacing.lg} />
+          {result.forecastTomorrow ? (
+            <>
+              <OutlookCard day="tomorrow" />
+              <Spacer height={Spacing.lg} />
+            </>
+          ) : null}
+          <Spacer height={Spacing.sm} />
+        </>
+      )}
 
       {chartEnabled && (
         <>
@@ -236,6 +264,8 @@ export default function InsightsScreen() {
               <InsightCard key={insight.id} insight={insight} />
             ))}
           </ScrollView>
+          <Spacer height={Spacing.xl} />
+          <LoggingPatternsCard />
         </>
       )}
 
@@ -245,6 +275,13 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
   rangeSelector: {
     flexDirection: "row",
     gap: Spacing.sm,

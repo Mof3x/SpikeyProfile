@@ -44,6 +44,7 @@ export function NFCQuickTap() {
       brainFog: 5,
       sensoryOverload: 5,
       executiveDysfunction: 5,
+      source: "quickTap",
     });
 
     setTimeout(() => {
